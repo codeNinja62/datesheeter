@@ -76,18 +76,25 @@ export default function App() {
   // ---------- Render ----------
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="relative min-h-screen text-slate-100 overflow-x-hidden">
+
+      {/* Ambient background orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        <div className="glow-orb absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full bg-violet-600/20 blur-[96px]" />
+        <div className="glow-orb absolute top-1/2 -right-48 w-[400px] h-[400px] rounded-full bg-indigo-600/15 blur-[96px]" style={{ animationDelay: '3s' }} />
+        <div className="glow-orb absolute bottom-0 left-1/3 w-[360px] h-[360px] rounded-full bg-blue-700/10 blur-[96px]" style={{ animationDelay: '5.5s' }} />
+      </div>
 
       {/* Header */}
-      <header className="border-b border-zinc-800 sticky top-0 z-10 bg-zinc-950/90 backdrop-blur">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-5 py-4">
-          <span className="text-sm font-mono font-bold tracking-widest text-amber-400 uppercase">
+      <header className="glass sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+          <span className="text-[11px] font-mono font-bold tracking-[0.3em] text-amber-400 uppercase">
             Datesheet
           </span>
           {fileUploaded && (
             <button
               onClick={handleReset}
-              className="text-xs font-mono text-zinc-500 hover:text-red-400 transition-colors"
+              className="text-[11px] font-mono text-white/30 hover:text-rose-400 tracking-widest transition-colors"
             >
               ← new file
             </button>
@@ -95,26 +102,26 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-5 py-12 space-y-10">
+      <main className="relative z-10 max-w-5xl mx-auto px-6 py-14 space-y-12">
 
         {/* Error */}
         {error && (
-          <div className="border border-red-800 bg-red-950/40 text-red-400 rounded px-4 py-3 text-sm font-mono">
+          <div className="glass border-rose-500/30 text-rose-300 rounded-2xl px-5 py-4 text-sm font-mono" style={{ borderColor: 'rgba(244,63,94,0.25)' }}>
             {error}
           </div>
         )}
 
         {/* Upload */}
         {!fileUploaded && (
-          <section className="pt-8 space-y-10">
-            <div className="space-y-3">
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-zinc-50 leading-none">
+          <section className="pt-10 space-y-12">
+            <div className="space-y-5">
+              <p className="text-[11px] font-mono tracking-[0.35em] text-amber-400/70 uppercase">Schedule Generator</p>
+              <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-[1.05]">
                 Your schedule.<br />
-                <span className="text-amber-400">No noise.</span>
+                <span className="text-amber-400">Flawlessly.</span>
               </h1>
-              <p className="text-zinc-400 max-w-sm text-sm leading-relaxed">
-                Drop the master Excel datesheet. Get a clean, personal schedule instantly.
-                Nothing touches a server — ever.
+              <p className="text-white/40 max-w-xs text-sm leading-relaxed font-light">
+                Drop the master Excel datesheet. Receive surgical precision — client-side, zero telemetry, zero compromise.
               </p>
             </div>
             <FileUploader onFileLoaded={handleFile} isLoading={isLoading} />
@@ -126,10 +133,10 @@ export default function App() {
           <section className="space-y-8">
 
             {/* Stats */}
-            <div className="flex gap-6 text-xs font-mono text-zinc-500">
-              <span><span className="text-zinc-200 font-bold">{allRows.length}</span> rows</span>
-              <span><span className="text-zinc-200 font-bold">{batches.length}</span> batches</span>
-              <span><span className="text-zinc-200 font-bold">{courses.length}</span> courses</span>
+            <div className="glass rounded-2xl px-6 py-4 inline-flex gap-8 text-[11px] font-mono">
+              <span className="text-white/35"><span className="text-white font-bold text-sm">{allRows.length}</span> rows</span>
+              <span className="text-white/35"><span className="text-white font-bold text-sm">{batches.length}</span> batches</span>
+              <span className="text-white/35"><span className="text-white font-bold text-sm">{courses.length}</span> courses</span>
             </div>
 
             <ModeToggle mode={mode} onModeChange={setMode} />
@@ -151,13 +158,13 @@ export default function App() {
             {displayRows.length > 0 && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between gap-4">
-                  <p className="text-xs font-mono text-zinc-500">
-                    <span className="text-amber-400 font-bold">{displayRows.length}</span> exams
+                  <p className="text-[11px] font-mono text-white/30 tracking-widest">
+                    <span className="text-amber-400 font-bold text-sm">{displayRows.length}</span> exams
                   </p>
                   <button
                     onClick={handleExportImage}
                     disabled={exporting}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-400 text-zinc-950 text-xs font-mono font-bold rounded hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-400 text-slate-950 text-[11px] font-mono font-black tracking-widest rounded-xl hover:bg-amber-300 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
                   >
                     {exporting ? 'Generating…' : '↓ Save as image'}
                   </button>
@@ -177,7 +184,7 @@ export default function App() {
           </section>
         )}
 
-        <footer className="text-xs font-mono text-zinc-700 pt-8 border-t border-zinc-900">
+        <footer className="text-[10px] font-mono text-white/15 pt-10 border-t border-white/5 tracking-widest">
           100% client-side · zero telemetry · zero trust required.
         </footer>
       </main>
