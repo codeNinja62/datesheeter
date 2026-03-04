@@ -1,5 +1,12 @@
 import { forwardRef } from 'react';
 
+const cell = {
+  border: '2px solid #000',
+  padding: '10px 28px',
+  textAlign: 'center',
+  whiteSpace: 'nowrap',
+};
+
 const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) {
   if (!rows || rows.length === 0) {
     return (
@@ -11,66 +18,63 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
 
   return (
     <div className="table-scroll overflow-x-auto">
-      <table
+      {/* Title sits above the table, not inside it */}
+      <div
         ref={ref}
-        className="w-full min-w-[520px] font-sans"
-        style={{ borderCollapse: 'collapse' }}
+        className="inline-block"
+        style={{ fontFamily: 'Arial, Helvetica, sans-serif', backgroundColor: '#fff' }}
       >
-        <thead>
-          {/* Title row */}
-          <tr>
-            <th
-              colSpan={4}
-              className="text-center text-xl font-extrabold py-4 px-4 bg-white text-black"
-              style={{ border: '2.5px solid #000' }}
-            >
-              {title || 'Datesheet'}
-            </th>
-          </tr>
-          {/* Column headers */}
-          <tr style={{ backgroundColor: '#F5B895' }}>
-            {['Time', 'Date', 'Day', 'Subject'].map((h) => (
-              <th
-                key={h}
-                className="text-center font-extrabold text-black py-3 px-6 text-base"
-                style={{ border: '2.5px solid #000' }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="bg-white">
-              <td
-                className="text-center font-semibold text-black py-3 px-6 whitespace-nowrap"
-                style={{ border: '2.5px solid #000' }}
-              >
-                {r.slot}
-              </td>
-              <td
-                className="text-center font-semibold text-black py-3 px-6 whitespace-nowrap"
-                style={{ border: '2.5px solid #000' }}
-              >
-                {r.date}
-              </td>
-              <td
-                className="text-center font-semibold text-black py-3 px-6"
-                style={{ border: '2.5px solid #000' }}
-              >
-                {r.day}
-              </td>
-              <td
-                className="text-center font-extrabold text-black py-3 px-6"
-                style={{ border: '2.5px solid #000', backgroundColor: '#FFFF00' }}
-              >
-                {r.courseName}
-              </td>
+        <p
+          style={{
+            textAlign: 'center',
+            fontWeight: '900',
+            fontSize: '1.35rem',
+            margin: '0 0 14px 0',
+            color: '#000',
+            letterSpacing: '0.01em',
+          }}
+        >
+          {title || 'Datesheet'}
+        </p>
+
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#F4B183' }}>
+              {['Time', 'Date', 'Day', 'Subject'].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    ...cell,
+                    fontWeight: '900',
+                    fontSize: '1rem',
+                    color: '#000',
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} style={{ backgroundColor: '#fff' }}>
+                <td style={{ ...cell, fontWeight: '600' }}>{r.slot}</td>
+                <td style={{ ...cell, fontWeight: '600' }}>{r.date}</td>
+                <td style={{ ...cell, fontWeight: '600' }}>{r.day}</td>
+                <td
+                  style={{
+                    ...cell,
+                    fontWeight: '900',
+                    backgroundColor: '#FFFF00',
+                  }}
+                >
+                  {r.courseName}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 });
