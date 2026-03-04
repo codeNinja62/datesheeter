@@ -30,6 +30,18 @@ export default function App() {
   // Ref for the table element (used by image export)
   const tableRef = useRef(null);
 
+  // Cursor spotlight
+  const spotRef = useRef(null);
+  useEffect(() => {
+    const el = spotRef.current;
+    if (!el) return;
+    const move = (e) => {
+      el.style.transform = `translate(${e.clientX - 300}px, ${e.clientY - 300}px)`;
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    return () => window.removeEventListener('pointermove', move);
+  }, []);
+
   // ---------- Handlers ----------
 
   const handleTypeError = useCallback((msg) => setError(msg), []);
@@ -100,12 +112,13 @@ export default function App() {
   return (
     <div className="relative min-h-screen text-slate-100 overflow-x-hidden">
 
-      {/* Ambient background orbs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        <div className="glow-orb absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full bg-violet-600/20 blur-[96px]" />
-        <div className="glow-orb absolute top-1/2 -right-48 w-[400px] h-[400px] rounded-full bg-indigo-600/15 blur-[96px]" style={{ animationDelay: '3s' }} />
-        <div className="glow-orb absolute bottom-0 left-1/3 w-[360px] h-[360px] rounded-full bg-blue-700/10 blur-[96px]" style={{ animationDelay: '5.5s' }} />
-      </div>
+      {/* Cursor spotlight */}
+      <div
+        ref={spotRef}
+        aria-hidden
+        className="cursor-spotlight fixed top-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ willChange: 'transform' }}
+      />
 
       {/* Header */}
       <header className="glass sticky top-0 z-20">
@@ -180,14 +193,15 @@ export default function App() {
         {fileUploaded && (
           <section className="space-y-8">
 
-            {/* Stats */}
-            <div className="glass rounded-2xl px-5 py-3.5 flex flex-wrap gap-x-6 gap-y-2 text-[11px] font-mono w-fit max-w-full">
-              <span className="text-white/35"><span className="text-white font-bold text-sm">{allRows.length}</span> exam slots</span>
-              <span className="text-white/35"><span className="text-white font-bold text-sm">{batches.length}</span> batches</span>
-              <span className="text-white/35"><span className="text-white font-bold text-sm">{courses.length}</span> courses</span>
+            {/* Stats + mode toggle in one row */}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+              <div className="glass rounded-xl px-4 py-2 flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] font-mono">
+                <span className="text-white/35"><span className="text-white font-bold text-sm">{allRows.length}</span> slots</span>
+                <span className="text-white/35"><span className="text-white font-bold text-sm">{batches.length}</span> batches</span>
+                <span className="text-white/35"><span className="text-white font-bold text-sm">{courses.length}</span> courses</span>
+              </div>
+              <ModeToggle mode={mode} onModeChange={setMode} />
             </div>
-
-            <ModeToggle mode={mode} onModeChange={setMode} />
 
             {/* Selector — keyed so swapping modes triggers entrance animation */}
             <div key={mode} className="animate-fade-in-up">
