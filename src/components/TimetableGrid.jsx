@@ -1,21 +1,28 @@
 import { forwardRef } from 'react';
 
-// ─── Color palette ────────────────────────────────────────────────────────────
+// ─── Theme ────────────────────────────────────────────────────────────────────
+
+const ACCENT      = '#1a237e'; // deep indigo — header + borders
+const ACCENT_SOFT = '#e8eaf6'; // very light indigo — time column bg
+const ACCENT_MID  = '#3949ab'; // mid indigo — header text accent
+const BORDER      = '#c5cae9'; // indigo-grey — internal borders
+const ROW_ODD     = '#f9fafb';
+const ROW_EVEN    = '#ffffff';
 
 const PALETTE = [
-  '#bbdefb','#c8e6c9','#fff9c4','#ffccbc','#e1bee7',
-  '#b2dfdb','#f8bbd0','#dcedc8','#b3e5fc','#ffe0b2',
-  '#d1c4e9','#c5cae9','#cfd8dc','#f0f4c3',
+  '#e3f2fd','#fce4ec','#f3e5f5','#e8f5e9',
+  '#fff8e1','#e0f7fa','#fbe9e7','#f1f8e9',
+  '#e8eaf6','#e0f2f1','#fff3e0','#ede7f6',
 ];
 
 const SPECIAL_KEYWORDS = ['library', 'seminar', 'workshop', 'meeting'];
-const SPECIAL_COLOR    = '#c8e6c9';
-const EMPTY_COLOR      = '#f8fafc';
+const SPECIAL_BG  = '#e8f5e9';
+const EMPTY_BG    = ROW_EVEN;
 
 function stableColor(text) {
-  if (!text) return EMPTY_COLOR;
+  if (!text) return EMPTY_BG;
   const base = text.split('(')[0].trim().toLowerCase();
-  if (SPECIAL_KEYWORDS.some((k) => base.includes(k))) return SPECIAL_COLOR;
+  if (SPECIAL_KEYWORDS.some((k) => base.includes(k))) return SPECIAL_BG;
   let hash = 5381;
   for (let i = 0; i < base.length; i++) {
     hash = ((hash << 5) + hash) ^ base.charCodeAt(i);
@@ -26,50 +33,64 @@ function stableColor(text) {
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const FONT = '"Inter", Arial, Helvetica, sans-serif';
+const FONT = '"Inter", "Segoe UI", Arial, sans-serif';
 
 const BASE = {
-  border: '1px solid #9ca3af',
+  border: `1px solid ${BORDER}`,
   verticalAlign: 'middle',
   textAlign: 'center',
-  fontSize: '0.76rem',
-  color: '#111827',
-  padding: '4px 8px',
-  lineHeight: 1.3,
+  fontSize: '0.75rem',
+  color: '#1a1a2e',
+  padding: '5px 9px',
+  lineHeight: 1.35,
 };
 
 const HEADER_CELL = {
   ...BASE,
-  backgroundColor: '#1e293b',
+  border: `1px solid ${ACCENT}`,
+  background: `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_MID} 100%)`,
   color: '#ffffff',
-  fontWeight: '800',
-  fontSize: '0.76rem',
-  letterSpacing: '0.04em',
+  fontWeight: '700',
+  fontSize: '0.73rem',
+  letterSpacing: '0.06em',
   textTransform: 'uppercase',
-  padding: '10px 14px',
+  padding: '11px 14px',
   whiteSpace: 'nowrap',
+};
+
+const HEADER_FIRST = {
+  ...HEADER_CELL,
+  background: `linear-gradient(135deg, #0d1257 0%, ${ACCENT} 100%)`,
+  color: '#c5cae9',
+  fontSize: '0.68rem',
+  letterSpacing: '0.08em',
 };
 
 const TIME_CELL = {
   ...BASE,
-  backgroundColor: '#f1f5f9',
+  border: `1px solid ${BORDER}`,
+  borderRight: `2px solid ${ACCENT}`,
+  backgroundColor: ACCENT_SOFT,
+  color: ACCENT,
   fontWeight: '700',
-  fontSize: '0.73rem',
+  fontSize: '0.7rem',
   whiteSpace: 'nowrap',
-  padding: '6px 10px',
-  minWidth: '90px',
+  padding: '5px 10px',
+  minWidth: '96px',
 };
 
 const LUNCH_CELL = {
-  ...BASE,
-  backgroundColor: '#fef3c7',
+  border: `1px solid #f59e0b`,
+  backgroundColor: '#fffbeb',
   color: '#92400e',
-  fontWeight: '700',
+  fontWeight: '800',
   fontSize: '0.76rem',
-  letterSpacing: '0.05em',
+  letterSpacing: '0.12em',
   textTransform: 'uppercase',
-  padding: '7px 14px',
+  padding: '9px 0',
   textAlign: 'center',
+  width: '100%',
+  display: 'block',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -77,22 +98,21 @@ const LUNCH_CELL = {
 const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
   if (!timetable) return null;
 
-  const { title, days, slots, lunchAfterSlot, legend } = timetable;
-  const colCount = days.length + 1;
+  const { title, days, slots, lunchAfterSlot } = timetable;
+  const colCount = days.length + 1; // time col + day cols
 
   // Build flat list of <tr> descriptors so we can use rowspan cleanly
   const tableRows = [];
-
   for (const slot of slots) {
     const rowCount = slot.rows.length;
-
     slot.rows.forEach((rowDict, ri) => {
       tableRows.push({
-        isFirst:  ri === 0,
-        time:     slot.time,
-        rowspan:  rowCount,
+        isFirst:      ri === 0,
+        time:         slot.time,
+        rowspan:      rowCount,
         rowDict,
         isLunchAfter: ri === rowCount - 1 && lunchAfterSlot === slot.time,
+        rowIndex:     tableRows.length,
       });
     });
   }
@@ -101,30 +121,39 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
     <div
       ref={ref}
       className="inline-block"
-      style={{ fontFamily: FONT, backgroundColor: '#ffffff', padding: '28px 32px 32px' }}
+      style={{ fontFamily: FONT, backgroundColor: '#ffffff', padding: '28px 32px 36px' }}
     >
-      {/* Title */}
-      <p style={{
-        textAlign: 'center', fontWeight: '900', fontSize: '1rem',
-        margin: '0 0 16px 0', color: '#1e293b', letterSpacing: '-0.01em', lineHeight: 1.35,
+      {/* Title bar */}
+      <div style={{
+        background: `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_MID} 100%)`,
+        borderRadius: '6px 6px 0 0',
+        padding: '14px 20px 12px',
+        marginBottom: 0,
       }}>
-        {title}
-      </p>
+        <p style={{
+          textAlign: 'center', fontWeight: '800', fontSize: '0.95rem',
+          margin: 0, color: '#ffffff', letterSpacing: '0.01em', lineHeight: 1.4,
+        }}>
+          {title}
+        </p>
+      </div>
 
       {/* Grid */}
       <div style={{
-        border: '2.5px solid #1e293b', display: 'inline-block',
-        borderRadius: '3px', overflow: 'hidden', width: '100%',
+        border: `2px solid ${ACCENT}`,
+        borderTop: 'none',
+        borderRadius: '0 0 6px 6px',
+        overflow: 'hidden',
       }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '96px' }} />
+            <col style={{ width: '100px' }} />
             {days.map((d) => <col key={d} />)}
           </colgroup>
 
           <thead>
             <tr>
-              <th style={HEADER_CELL}>TIME / DAYS</th>
+              <th style={HEADER_FIRST}>TIME</th>
               {days.map((day) => <th key={day} style={HEADER_CELL}>{day}</th>)}
             </tr>
           </thead>
@@ -132,8 +161,10 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
           <tbody>
             {tableRows.map((tr, idx) => (
               <>
-                <tr key={`row-${idx}`}>
-                  {/* Time cell only on the first row of each slot (rowspan) */}
+                <tr
+                  key={`row-${idx}`}
+                  style={{ backgroundColor: tr.rowIndex % 2 === 0 ? ROW_ODD : ROW_EVEN }}
+                >
                   {tr.isFirst && (
                     <td rowSpan={tr.rowspan} style={TIME_CELL}>{tr.time}</td>
                   )}
@@ -145,9 +176,9 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
                         key={day}
                         style={{
                           ...BASE,
-                          backgroundColor: text ? stableColor(text) : '#ffffff',
+                          backgroundColor: text ? stableColor(text) : 'transparent',
                           fontWeight: text ? '600' : '400',
-                          color: text ? '#111827' : '#d1d5db',
+                          color: text ? '#1a1a2e' : '#d1d5db',
                         }}
                       >
                         {text || '—'}
@@ -156,11 +187,18 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
                   })}
                 </tr>
 
-                {/* Lunch + Prayer Break after the last row of the matching slot */}
                 {tr.isLunchAfter && (
                   <tr key={`lunch-${idx}`}>
-                    <td colSpan={colCount} style={LUNCH_CELL}>
-                      Lunch + Prayer Break
+                    <td
+                      colSpan={colCount}
+                      style={{
+                        border: `1px solid #f59e0b`,
+                        borderLeft: `3px solid #f59e0b`,
+                        borderRight: `3px solid #f59e0b`,
+                        padding: 0,
+                      }}
+                    >
+                      <div style={LUNCH_CELL}>🍽 &nbsp; Lunch Break &nbsp; 🍽</div>
                     </td>
                   </tr>
                 )}
@@ -169,51 +207,8 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
           </tbody>
         </table>
       </div>
-
-      {/* Legend */}
-      {legend && legend.length > 0 && (
-        <div style={{ marginTop: '24px' }}>
-          <LegendTable legend={legend} />
-        </div>
-      )}
     </div>
   );
 });
-
-// ─── Legend ───────────────────────────────────────────────────────────────────
-
-function LegendTable({ legend }) {
-  if (!legend.length) return null;
-  const headers = Object.keys(legend[0]);
-
-  const LGND_HEAD = {
-    ...BASE,
-    backgroundColor: '#fef3c7', color: '#78350f',
-    fontWeight: '800', fontSize: '0.71rem',
-    letterSpacing: '0.04em', textTransform: 'uppercase',
-    padding: '7px 10px', whiteSpace: 'nowrap',
-  };
-  const LGND_CELL = { ...BASE, fontSize: '0.71rem', padding: '5px 10px', textAlign: 'left' };
-
-  return (
-    <div style={{
-      border: '2px solid #1e293b', borderRadius: '3px',
-      overflow: 'hidden', display: 'inline-block', width: '100%',
-    }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <thead>
-          <tr>{headers.map((h) => <th key={h} style={LGND_HEAD}>{h}</th>)}</tr>
-        </thead>
-        <tbody>
-          {legend.map((row, ri) => (
-            <tr key={ri} style={{ backgroundColor: ri % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-              {headers.map((h) => <td key={h} style={LGND_CELL}>{row[h] ?? ''}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 export default TimetableGrid;
