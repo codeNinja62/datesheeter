@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#08081a"/>
+  <!-- d -->
+  <text
+    x="3" y="23"
+    font-family="ui-monospace, 'Cascadia Code', 'Fira Mono', monospace"
+    font-size="17"
+    font-weight="700"
+    fill="rgba(255,255,255,0.35)"
+    letter-spacing="-0.5"
+  >d</text>
+  <!-- s -->
+  <text
+    x="15" y="23"
+    font-family="ui-monospace, 'Cascadia Code', 'Fira Mono', monospace"
+    font-size="17"
+    font-weight="700"
+    fill="#fbbf24"
+    letter-spacing="-0.5"
+  >s</text>
+</svg>
