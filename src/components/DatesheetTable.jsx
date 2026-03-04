@@ -18,7 +18,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows }, ref) {
             <th className="px-5 py-3 font-semibold">Date</th>
             <th className="px-5 py-3 font-semibold">Day</th>
             <th className="px-5 py-3 font-semibold">Time</th>
-            <th className="px-5 py-3 font-semibold">Course Code</th>
+            <th className="px-5 py-3 font-semibold">Course Name</th>
           </tr>
         </thead>
         <tbody>
@@ -35,7 +35,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows }, ref) {
               </td>
               <td className="px-5 py-3 text-slate-600">{r.day}</td>
               <td className="px-5 py-3 text-slate-600 whitespace-nowrap">{r.slot}</td>
-              <td className="px-5 py-3 text-indigo-600 font-medium">{r.courseCode}</td>
+              <td className="px-5 py-3 text-indigo-600 font-medium">{r.courseName}</td>
             </tr>
           ))}
         </tbody>
