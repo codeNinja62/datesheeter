@@ -432,6 +432,7 @@ export default function App() {
                         batches={ttSections[ttSelectedSheet]}
                         selectedBatch={ttSelectedSection}
                         onSelect={setTtSelectedSection}
+                        label="Section"
                       />
                     </div>
                   </div>
@@ -463,7 +464,7 @@ export default function App() {
                     </div>
 
                     {/* Timetable grid */}
-                    <div className="table-scroll overflow-x-auto flex justify-center">
+                    <div className="overflow-x-auto w-full">
                       <TimetableGrid timetable={currentTimetable} ref={ttGridRef} />
                     </div>
                   </div>

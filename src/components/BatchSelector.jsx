@@ -1,9 +1,9 @@
 import { ChevronDown } from 'lucide-react';
 
-export default function BatchSelector({ batches, selectedBatch, onSelect }) {
+export default function BatchSelector({ batches, selectedBatch, onSelect, label = 'Batch' }) {
   return (
     <div className="w-full max-w-xs space-y-2">
-      <label className="block text-[10px] font-mono text-white/30 tracking-[0.3em] uppercase">Batch</label>
+      <label className="block text-[10px] font-mono text-white/30 tracking-[0.3em] uppercase">{label}</label>
       <div className="relative">
         <select
           value={selectedBatch}

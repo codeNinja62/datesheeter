@@ -207,10 +207,16 @@ function parseSheet(sheet, sheetName) {
     const { rowIdx: headerRow, dayColumns, timeColIdx } = dayHeaderRows[si];
 
     // --- Title: nearest non-empty text row above this header -----------------
+    // Skip mergeNonOrigin positions to avoid repeating the value from merged cells.
     let title = sheetName;
     const prevHeader = si > 0 ? dayHeaderRows[si - 1].rowIdx : range.s.r - 1;
     for (let tr = headerRow - 1; tr > prevHeader; tr--) {
-      const txt = (grid[tr] || []).map((c) => String(c ?? '').trim()).filter(Boolean).join(' ').trim();
+      const txt = (grid[tr] || [])
+        .filter((_v, ci) => !mergeNonOrigin.has(`${tr},${ci}`))
+        .map((c) => String(c ?? '').trim())
+        .filter(Boolean)
+        .join(' ')
+        .trim();
       if (txt.length > 10) { title = txt; break; }
     }
 
