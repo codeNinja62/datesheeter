@@ -4,7 +4,6 @@ import ModeToggle from './components/ModeToggle';
 import BatchSelector from './components/BatchSelector';
 import CourseSelector from './components/CourseSelector';
 import DatesheetTable from './components/DatesheetTable';
-import ExportBar from './components/ExportBar';
 import { parseFile, filterByBatch, filterByCourses, sortRows } from './utils/dataProcessor';
 import { exportToImage } from './utils/exporter';
 
@@ -17,10 +16,11 @@ export default function App() {
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState('batch'); // 'batch' | 'custom'
+  const [mode, setMode] = useState('batch');
   const [selectedBatch, setSelectedBatch] = useState('');
   const [selectedNames, setSelectedNames] = useState([]);
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Ref for the table element (used by image export)
   const tableRef = useRef(null);
@@ -45,24 +45,21 @@ export default function App() {
     }
   }, []);
 
-  // ---------- Filtered & sorted rows ----------
-
   const displayRows = useMemo(() => {
-    let filtered = [];
-    if (mode === 'batch' && selectedBatch) {
-      filtered = filterByBatch(allRows, selectedBatch);
-    } else if (mode === 'custom' && selectedNames.length > 0) {
-      filtered = filterByCourses(allRows, selectedNames);
-    }
-    return sortRows(filtered);
+    if (mode === 'batch' && selectedBatch)
+      return sortRows(filterByBatch(allRows, selectedBatch));
+    if (mode === 'custom' && selectedNames.length > 0)
+      return sortRows(filterByCourses(allRows, selectedNames));
+    return [];
   }, [allRows, mode, selectedBatch, selectedNames]);
 
-  // ---------- Export handlers ----------
-
-  const handleExportImage = useCallback(() => {
+  const handleExportImage = useCallback(async () => {
     const el = tableRef.current;
-    if (el) exportToImage(el);
-  }, []);
+    if (!el || exporting) return;
+    setExporting(true);
+    try { await exportToImage(el); }
+    finally { setExporting(false); }
+  }, [exporting]);
 
   // ---------- Reset ----------
 
@@ -79,68 +76,64 @@ export default function App() {
   // ---------- Render ----------
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3 sm:px-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-indigo-700 tracking-tight">
-            📅 Datesheet Generator
-          </h1>
+      <header className="border-b border-zinc-800 sticky top-0 z-10 bg-zinc-950/90 backdrop-blur">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-5 py-4">
+          <span className="text-sm font-mono font-bold tracking-widest text-amber-400 uppercase">
+            Datesheet
+          </span>
           {fileUploaded && (
             <button
               onClick={handleReset}
-              className="text-sm text-slate-500 hover:text-red-500 transition"
+              className="text-xs font-mono text-zinc-500 hover:text-red-400 transition-colors"
             >
-              Upload New File
+              ← new file
             </button>
           )}
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="max-w-5xl mx-auto px-5 py-12 space-y-10">
+
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-            <strong>Error:</strong> {error}
+          <div className="border border-red-800 bg-red-950/40 text-red-400 rounded px-4 py-3 text-sm font-mono">
+            {error}
           </div>
         )}
 
-        {/* Upload Phase */}
+        {/* Upload */}
         {!fileUploaded && (
-          <section className="pt-12">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-800 mb-2">
-                Your Exam Schedule, Simplified
-              </h2>
-              <p className="text-slate-500 max-w-md mx-auto">
-                Upload your university's master Excel datesheet and get a clean,
-                personalized schedule in seconds. 100% private — nothing leaves your browser.
+          <section className="pt-8 space-y-10">
+            <div className="space-y-3">
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-zinc-50 leading-none">
+                Your schedule.<br />
+                <span className="text-amber-400">No noise.</span>
+              </h1>
+              <p className="text-zinc-400 max-w-sm text-sm leading-relaxed">
+                Drop the master Excel datesheet. Get a clean, personal schedule instantly.
+                Nothing touches a server — ever.
               </p>
             </div>
             <FileUploader onFileLoaded={handleFile} isLoading={isLoading} />
           </section>
         )}
 
-        {/* Selection Phase */}
+        {/* Selection + Preview */}
         {fileUploaded && (
-          <section className="space-y-6">
+          <section className="space-y-8">
+
             {/* Stats */}
-            <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-              <span className="bg-white border border-slate-200 rounded-full px-3 py-1 shadow-sm">
-                {allRows.length} rows
-              </span>
-              <span className="bg-white border border-slate-200 rounded-full px-3 py-1 shadow-sm">
-                {batches.length} batches
-              </span>
-              <span className="bg-white border border-slate-200 rounded-full px-3 py-1 shadow-sm">
-                {courses.length} courses
-              </span>
+            <div className="flex gap-6 text-xs font-mono text-zinc-500">
+              <span><span className="text-zinc-200 font-bold">{allRows.length}</span> rows</span>
+              <span><span className="text-zinc-200 font-bold">{batches.length}</span> batches</span>
+              <span><span className="text-zinc-200 font-bold">{courses.length}</span> courses</span>
             </div>
 
-            {/* Mode Toggle */}
             <ModeToggle mode={mode} onModeChange={setMode} />
 
-            {/* Selectors */}
             {mode === 'batch' ? (
               <BatchSelector
                 batches={batches}
@@ -155,21 +148,21 @@ export default function App() {
               />
             )}
 
-            {/* Preview Phase */}
             {displayRows.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <h3 className="text-lg font-semibold text-slate-700">
-                    Your Datesheet{' '}
-                    <span className="text-indigo-500 font-normal text-base">
-                      ({displayRows.length} exams)
-                    </span>
-                  </h3>
-                  <ExportBar
-                    onExportImage={handleExportImage}
-                    disabled={displayRows.length === 0}
-                  />
+              <div className="space-y-5">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs font-mono text-zinc-500">
+                    <span className="text-amber-400 font-bold">{displayRows.length}</span> exams
+                  </p>
+                  <button
+                    onClick={handleExportImage}
+                    disabled={exporting}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-400 text-zinc-950 text-xs font-mono font-bold rounded hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {exporting ? 'Generating…' : '↓ Save as image'}
+                  </button>
                 </div>
+
                 <DatesheetTable
                   rows={displayRows}
                   ref={tableRef}
@@ -184,9 +177,8 @@ export default function App() {
           </section>
         )}
 
-        {/* Footer */}
-        <footer className="text-center text-xs text-slate-400 pt-6 pb-4 border-t border-slate-100">
-          Datesheet Generator — 100% client-side, zero data sent to any server.
+        <footer className="text-xs font-mono text-zinc-700 pt-8 border-t border-zinc-900">
+          100% client-side · zero telemetry · zero trust required.
         </footer>
       </main>
     </div>

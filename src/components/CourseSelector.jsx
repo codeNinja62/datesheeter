@@ -6,81 +6,68 @@ export default function CourseSelector({ courses, selectedNames, onSelect }) {
   const filtered = useMemo(() => {
     if (!search) return courses;
     const q = search.toLowerCase();
-    return courses.filter((name) => name.toLowerCase().includes(q));
+    return courses.filter((n) => n.toLowerCase().includes(q));
   }, [courses, search]);
 
-  const toggle = (name) => {
-    if (selectedNames.includes(name)) {
-      onSelect(selectedNames.filter((n) => n !== name));
-    } else {
-      onSelect([...selectedNames, name]);
-    }
-  };
-
-  const clearAll = () => onSelect([]);
+  const toggle = (name) =>
+    onSelect(
+      selectedNames.includes(name)
+        ? selectedNames.filter((n) => n !== name)
+        : [...selectedNames, name]
+    );
 
   return (
-    <div className="w-full max-w-lg">
-      <label className="block text-sm font-medium text-slate-600 mb-1">
-        Select Courses
-      </label>
+    <div className="w-full max-w-lg space-y-2">
+      <label className="block text-xs font-mono text-zinc-500">courses</label>
 
-      {/* Search box */}
       <input
         type="text"
-        placeholder="Search courses…"
+        placeholder="search…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition mb-2"
+        className="w-full border border-zinc-700 bg-zinc-900 rounded px-3 py-2 text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none transition-colors"
       />
 
-      {/* Selected chips */}
       {selectedNames.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
+        <div className="flex flex-wrap gap-1.5">
           {selectedNames.map((name) => (
             <span
               key={name}
-              className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full"
+              className="inline-flex items-center gap-1 bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-mono px-2 py-0.5 rounded"
             >
               {name}
-              <button
-                onClick={() => toggle(name)}
-                className="hover:text-indigo-900 font-bold"
-              >
-                ×
-              </button>
+              <button onClick={() => toggle(name)} className="hover:text-red-400 transition-colors">×</button>
             </span>
           ))}
           <button
-            onClick={clearAll}
-            className="text-xs text-slate-400 hover:text-red-500 transition ml-1"
+            onClick={() => onSelect([])}
+            className="text-xs font-mono text-zinc-600 hover:text-red-400 transition-colors"
           >
-            Clear all
+            clear
           </button>
         </div>
       )}
 
-      {/* Course list */}
-      <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-lg bg-white">
+      <div className="max-h-56 overflow-y-auto border border-zinc-800 rounded bg-zinc-900">
         {filtered.length === 0 && (
-          <p className="px-4 py-3 text-sm text-slate-400">No courses found.</p>
+          <p className="px-4 py-3 text-xs font-mono text-zinc-600">no results</p>
         )}
         {filtered.map((name) => {
           const checked = selectedNames.includes(name);
           return (
             <label
               key={name}
-              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-indigo-50 transition text-sm ${
-                checked ? 'bg-indigo-50/60' : ''
+              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer text-xs font-mono transition-colors hover:bg-zinc-800 ${
+                checked ? 'text-amber-400' : 'text-zinc-400'
               }`}
             >
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => toggle(name)}
-                className="accent-indigo-600 w-4 h-4"
+                className="accent-amber-400 w-3.5 h-3.5"
               />
-              <span className="text-slate-700">{name}</span>
+              {name}
             </label>
           );
         })}
