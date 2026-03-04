@@ -29,16 +29,27 @@ export function exportToExcel(rows, filename = 'my-datesheet.xlsx') {
 export async function exportToImage(element, filename = 'my-datesheet.png') {
   if (!element) return;
 
-  // Capture the element as-is at high resolution
+  // Scroll element into view so html2canvas sees it correctly
+  element.scrollIntoView({ block: 'start' });
+  await new Promise((r) => setTimeout(r, 120)); // let layout settle
+
+  const rect = element.getBoundingClientRect();
+
   const sourceCanvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
+    x: rect.left,
+    y: rect.top,
+    width: rect.width,
+    height: rect.height,
+    scrollX: -window.scrollX,
+    scrollY: -window.scrollY,
   });
 
-  // Draw onto a new canvas with 40px (×2 for scale) padding on all sides
-  const pad = 80; // 40px * scale(2)
+  // Composite onto a padded canvas (40px × scale 2 = 80px each side)
+  const pad = 80;
   const padded = document.createElement('canvas');
   padded.width = sourceCanvas.width + pad * 2;
   padded.height = sourceCanvas.height + pad * 2;
