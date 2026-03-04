@@ -87,7 +87,7 @@ export default function App() {
 
       {/* Header */}
       <header className="glass sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-4 sm:px-6 py-4">
           <span className="text-[11px] font-mono font-bold tracking-[0.3em] text-amber-400 uppercase">
             Datesheet
           </span>
@@ -102,7 +102,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="relative z-10 max-w-5xl mx-auto px-6 py-14 space-y-12">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-14 space-y-12">
 
         {/* Error */}
         {error && (
@@ -116,7 +116,7 @@ export default function App() {
           <section className="pt-10 space-y-12">
             <div className="space-y-5">
               <p className="text-[11px] font-mono tracking-[0.35em] text-amber-400/70 uppercase">Schedule Generator</p>
-              <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-[1.05]">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.05]">
                 Your schedule.<br />
                 <span className="text-amber-400">Flawlessly.</span>
               </h1>
@@ -133,7 +133,7 @@ export default function App() {
           <section className="space-y-8">
 
             {/* Stats */}
-            <div className="glass rounded-2xl px-6 py-4 inline-flex gap-8 text-[11px] font-mono">
+            <div className="glass rounded-2xl px-5 py-3.5 flex flex-wrap gap-x-6 gap-y-2 text-[11px] font-mono w-fit max-w-full">
               <span className="text-white/35"><span className="text-white font-bold text-sm">{allRows.length}</span> rows</span>
               <span className="text-white/35"><span className="text-white font-bold text-sm">{batches.length}</span> batches</span>
               <span className="text-white/35"><span className="text-white font-bold text-sm">{courses.length}</span> courses</span>
@@ -157,7 +157,7 @@ export default function App() {
 
             {displayRows.length > 0 && (
               <div className="space-y-5">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                   <p className="text-[11px] font-mono text-white/30 tracking-widest">
                     <span className="text-amber-400 font-bold text-sm">{displayRows.length}</span> exams
                   </p>
