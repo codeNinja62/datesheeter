@@ -1,23 +1,19 @@
 import { useState, useMemo } from 'react';
 
-export default function CourseSelector({ courses, selectedCodes, onSelect }) {
+export default function CourseSelector({ courses, selectedNames, onSelect }) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
     if (!search) return courses;
     const q = search.toLowerCase();
-    return courses.filter(
-      (c) =>
-        c.courseCode.toLowerCase().includes(q) ||
-        c.courseName.toLowerCase().includes(q)
-    );
+    return courses.filter((name) => name.toLowerCase().includes(q));
   }, [courses, search]);
 
-  const toggle = (code) => {
-    if (selectedCodes.includes(code)) {
-      onSelect(selectedCodes.filter((c) => c !== code));
+  const toggle = (name) => {
+    if (selectedNames.includes(name)) {
+      onSelect(selectedNames.filter((n) => n !== name));
     } else {
-      onSelect([...selectedCodes, code]);
+      onSelect([...selectedNames, name]);
     }
   };
 
@@ -39,16 +35,16 @@ export default function CourseSelector({ courses, selectedCodes, onSelect }) {
       />
 
       {/* Selected chips */}
-      {selectedCodes.length > 0 && (
+      {selectedNames.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
-          {selectedCodes.map((code) => (
+          {selectedNames.map((name) => (
             <span
-              key={code}
+              key={name}
               className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full"
             >
-              {code}
+              {name}
               <button
-                onClick={() => toggle(code)}
+                onClick={() => toggle(name)}
                 className="hover:text-indigo-900 font-bold"
               >
                 ×
@@ -69,11 +65,11 @@ export default function CourseSelector({ courses, selectedCodes, onSelect }) {
         {filtered.length === 0 && (
           <p className="px-4 py-3 text-sm text-slate-400">No courses found.</p>
         )}
-        {filtered.map((c) => {
-          const checked = selectedCodes.includes(c.courseCode);
+        {filtered.map((name) => {
+          const checked = selectedNames.includes(name);
           return (
             <label
-              key={c.courseCode}
+              key={name}
               className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-indigo-50 transition text-sm ${
                 checked ? 'bg-indigo-50/60' : ''
               }`}
@@ -81,13 +77,10 @@ export default function CourseSelector({ courses, selectedCodes, onSelect }) {
               <input
                 type="checkbox"
                 checked={checked}
-                onChange={() => toggle(c.courseCode)}
+                onChange={() => toggle(name)}
                 className="accent-indigo-600 w-4 h-4"
               />
-              <span className="font-medium text-slate-700 min-w-[90px]">
-                {c.courseCode}
-              </span>
-              <span className="text-slate-500">{c.courseName}</span>
+              <span className="text-slate-700">{name}</span>
             </label>
           );
         })}

@@ -83,6 +83,7 @@ export function parseFile(file) {
         const rows = [];
         const batchSet = new Set();
         const courseMap = new Map(); // courseCode → courseName
+        const courseNameSet = new Set(); // unique course names for selector
 
         for (let i = headerRowIdx + 1; i < json.length; i++) {
           const r = json[i];
@@ -107,12 +108,11 @@ export function parseFile(file) {
           rows.push({ batch, date, day, slot, courseName, courseCode });
           if (batch) batchSet.add(batch);
           if (courseCode) courseMap.set(courseCode, courseName);
+          if (courseName) courseNameSet.add(courseName);
         }
 
         const batches = [...batchSet].sort();
-        const courses = [...courseMap.entries()]
-          .map(([code, name]) => ({ courseCode: code, courseName: name }))
-          .sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+        const courses = [...courseNameSet].sort();
 
         resolve({ rows, batches, courses });
       } catch (err) {
@@ -183,9 +183,9 @@ export function filterByBatch(rows, batch) {
   return rows.filter((r) => r.batch === batch);
 }
 
-export function filterByCourses(rows, courseCodes) {
-  const set = new Set(courseCodes);
-  return rows.filter((r) => set.has(r.courseCode));
+export function filterByCourses(rows, courseNames) {
+  const set = new Set(courseNames);
+  return rows.filter((r) => set.has(r.courseName));
 }
 
 /* ---- Sort helper — sort by date then slot ---- */

@@ -19,7 +19,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [mode, setMode] = useState('batch'); // 'batch' | 'custom'
   const [selectedBatch, setSelectedBatch] = useState('');
-  const [selectedCodes, setSelectedCodes] = useState([]);
+  const [selectedNames, setSelectedNames] = useState([]);
   const [fileUploaded, setFileUploaded] = useState(false);
 
   // Ref for the table element (used by image export)
@@ -36,7 +36,7 @@ export default function App() {
       setBatches(result.batches);
       setCourses(result.courses);
       setSelectedBatch('');
-      setSelectedCodes([]);
+      setSelectedNames([]);
       setFileUploaded(true);
     } catch (err) {
       setError(err.message || 'Something went wrong while parsing the file.');
@@ -51,11 +51,11 @@ export default function App() {
     let filtered = [];
     if (mode === 'batch' && selectedBatch) {
       filtered = filterByBatch(allRows, selectedBatch);
-    } else if (mode === 'custom' && selectedCodes.length > 0) {
-      filtered = filterByCourses(allRows, selectedCodes);
+    } else if (mode === 'custom' && selectedNames.length > 0) {
+      filtered = filterByCourses(allRows, selectedNames);
     }
     return sortRows(filtered);
-  }, [allRows, mode, selectedBatch, selectedCodes]);
+  }, [allRows, mode, selectedBatch, selectedNames]);
 
   // ---------- Export handlers ----------
 
@@ -75,7 +75,7 @@ export default function App() {
     setBatches([]);
     setCourses([]);
     setSelectedBatch('');
-    setSelectedCodes([]);
+    setSelectedNames([]);
     setFileUploaded(false);
     setError('');
   };
@@ -154,8 +154,8 @@ export default function App() {
             ) : (
               <CourseSelector
                 courses={courses}
-                selectedCodes={selectedCodes}
-                onSelect={setSelectedCodes}
+                selectedNames={selectedNames}
+                onSelect={setSelectedNames}
               />
             )}
 
