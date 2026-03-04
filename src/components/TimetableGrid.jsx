@@ -1,28 +1,23 @@
 import { forwardRef } from 'react';
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
+// ─── Theme (matches datesheet: dark navy + amber) ─────────────────────────────
 
-const ACCENT      = '#1a237e'; // deep indigo — header + borders
-const ACCENT_SOFT = '#e8eaf6'; // very light indigo — time column bg
-const ACCENT_MID  = '#3949ab'; // mid indigo — header text accent
-const BORDER      = '#c5cae9'; // indigo-grey — internal borders
-const ROW_ODD     = '#f9fafb';
-const ROW_EVEN    = '#ffffff';
+const NAVY   = '#0f172a';
+const AMBER  = '#fbbf24';
+const BORDER = '#d1d5db';
 
 const PALETTE = [
-  '#e3f2fd','#fce4ec','#f3e5f5','#e8f5e9',
-  '#fff8e1','#e0f7fa','#fbe9e7','#f1f8e9',
-  '#e8eaf6','#e0f2f1','#fff3e0','#ede7f6',
+  '#fef9c3','#dbeafe','#fce7f3','#dcfce7',
+  '#ffedd5','#e0f2fe','#f3e8ff','#d1fae5',
+  '#fef3c7','#ede9fe','#fee2e2','#ecfdf5',
 ];
 
 const SPECIAL_KEYWORDS = ['library', 'seminar', 'workshop', 'meeting'];
-const SPECIAL_BG  = '#e8f5e9';
-const EMPTY_BG    = ROW_EVEN;
 
 function stableColor(text) {
-  if (!text) return EMPTY_BG;
+  if (!text) return '#ffffff';
   const base = text.split('(')[0].trim().toLowerCase();
-  if (SPECIAL_KEYWORDS.some((k) => base.includes(k))) return SPECIAL_BG;
+  if (SPECIAL_KEYWORDS.some((k) => base.includes(k))) return '#d1fae5';
   let hash = 5381;
   for (let i = 0; i < base.length; i++) {
     hash = ((hash << 5) + hash) ^ base.charCodeAt(i);
@@ -33,64 +28,55 @@ function stableColor(text) {
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const FONT = '"Inter", "Segoe UI", Arial, sans-serif';
+const FONT = '"Inter", Arial, Helvetica, sans-serif';
 
 const BASE = {
   border: `1px solid ${BORDER}`,
   verticalAlign: 'middle',
   textAlign: 'center',
-  fontSize: '0.75rem',
-  color: '#1a1a2e',
-  padding: '5px 9px',
+  fontSize: '0.82rem',
+  color: '#000000',
+  padding: '8px 12px',
   lineHeight: 1.35,
 };
 
 const HEADER_CELL = {
   ...BASE,
-  border: `1px solid ${ACCENT}`,
-  background: `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_MID} 100%)`,
+  border: `1px solid ${NAVY}`,
+  backgroundColor: NAVY,
   color: '#ffffff',
-  fontWeight: '700',
-  fontSize: '0.73rem',
+  fontWeight: '800',
+  fontSize: '0.8rem',
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
-  padding: '11px 14px',
+  padding: '13px 14px',
   whiteSpace: 'nowrap',
-};
-
-const HEADER_FIRST = {
-  ...HEADER_CELL,
-  background: `linear-gradient(135deg, #0d1257 0%, ${ACCENT} 100%)`,
-  color: '#c5cae9',
-  fontSize: '0.68rem',
-  letterSpacing: '0.08em',
 };
 
 const TIME_CELL = {
   ...BASE,
   border: `1px solid ${BORDER}`,
-  borderRight: `2px solid ${ACCENT}`,
-  backgroundColor: ACCENT_SOFT,
-  color: ACCENT,
+  borderRight: `2px solid ${NAVY}`,
+  backgroundColor: '#f8fafc',
+  color: '#000000',
   fontWeight: '700',
-  fontSize: '0.7rem',
+  fontSize: '0.75rem',
   whiteSpace: 'nowrap',
-  padding: '5px 10px',
+  padding: '8px 10px',
   minWidth: '96px',
 };
 
 const LUNCH_CELL = {
-  border: `1px solid #f59e0b`,
-  backgroundColor: '#fffbeb',
+  border: `1px solid ${AMBER}`,
+  backgroundColor: '#fefce8',
   color: '#92400e',
   fontWeight: '800',
-  fontSize: '0.76rem',
-  letterSpacing: '0.12em',
+  fontSize: '0.8rem',
+  letterSpacing: '0.1em',
   textTransform: 'uppercase',
-  padding: '9px 0',
+  padding: '10px 14px',
   textAlign: 'center',
-  width: '100%',
-  display: 'block',
+  verticalAlign: 'middle',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -123,28 +109,16 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
       className="inline-block"
       style={{ fontFamily: FONT, backgroundColor: '#ffffff', padding: '28px 32px 36px' }}
     >
-      {/* Title bar */}
-      <div style={{
-        background: `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_MID} 100%)`,
-        borderRadius: '6px 6px 0 0',
-        padding: '14px 20px 12px',
-        marginBottom: 0,
+      {/* Title */}
+      <p style={{
+        textAlign: 'center', fontWeight: '900', fontSize: '1.1rem',
+        margin: '0 0 18px 0', color: '#000000', letterSpacing: '-0.01em', lineHeight: 1.4,
       }}>
-        <p style={{
-          textAlign: 'center', fontWeight: '800', fontSize: '0.95rem',
-          margin: 0, color: '#ffffff', letterSpacing: '0.01em', lineHeight: 1.4,
-        }}>
-          {title}
-        </p>
-      </div>
+        {title}
+      </p>
 
       {/* Grid */}
-      <div style={{
-        border: `2px solid ${ACCENT}`,
-        borderTop: 'none',
-        borderRadius: '0 0 6px 6px',
-        overflow: 'hidden',
-      }}>
+      <div style={{ border: `2.5px solid ${NAVY}`, borderRadius: '2px', overflow: 'hidden' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '100px' }} />
@@ -153,7 +127,7 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
 
           <thead>
             <tr>
-              <th style={HEADER_FIRST}>TIME</th>
+              <th style={HEADER_CELL}>Time</th>
               {days.map((day) => <th key={day} style={HEADER_CELL}>{day}</th>)}
             </tr>
           </thead>
@@ -163,7 +137,7 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
               <>
                 <tr
                   key={`row-${idx}`}
-                  style={{ backgroundColor: tr.rowIndex % 2 === 0 ? ROW_ODD : ROW_EVEN }}
+                  style={{ backgroundColor: tr.rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' }}
                 >
                   {tr.isFirst && (
                     <td rowSpan={tr.rowspan} style={TIME_CELL}>{tr.time}</td>
@@ -176,9 +150,9 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
                         key={day}
                         style={{
                           ...BASE,
-                          backgroundColor: text ? stableColor(text) : 'transparent',
-                          fontWeight: text ? '600' : '400',
-                          color: text ? '#1a1a2e' : '#d1d5db',
+                          backgroundColor: text ? stableColor(text) : '#ffffff',
+                          fontWeight: text ? '700' : '400',
+                          color: text ? '#000000' : '#d1d5db',
                         }}
                       >
                         {text || '—'}
@@ -189,16 +163,8 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
 
                 {tr.isLunchAfter && (
                   <tr key={`lunch-${idx}`}>
-                    <td
-                      colSpan={colCount}
-                      style={{
-                        border: `1px solid #f59e0b`,
-                        borderLeft: `3px solid #f59e0b`,
-                        borderRight: `3px solid #f59e0b`,
-                        padding: 0,
-                      }}
-                    >
-                      <div style={LUNCH_CELL}>🍽 &nbsp; Lunch Break &nbsp; 🍽</div>
+                    <td colSpan={colCount} style={LUNCH_CELL}>
+                      Lunch Break
                     </td>
                   </tr>
                 )}

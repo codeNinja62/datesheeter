@@ -245,8 +245,14 @@ function parseSheet(sheet, sheetName) {
       // Skip completely empty rows
       if (row.every((c) => !String(c ?? '').trim())) continue;
 
-      // Lunch / Prayer Break marker
-      if (timeLc.includes('lunch') || timeLc.includes('prayer') || timeLc.includes('namaz')) {
+      // Lunch / Prayer Break / Ramzan marker — check time cell AND all cells in the row
+      const rowHasPrayerLunch = timeLc.includes('lunch') || timeLc.includes('prayer') ||
+        timeLc.includes('namaz') || timeLc.includes('ramzan') ||
+        row.some((c) => {
+          const lc = String(c ?? '').toLowerCase();
+          return lc.includes('prayer') || lc.includes('namaz') || lc.includes('ramzan') || lc.includes('lunch');
+        });
+      if (rowHasPrayerLunch) {
         lunchAfterSlot = currentSlot !== null ? slots[currentSlot].time : null;
         continue;
       }
