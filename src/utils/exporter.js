@@ -24,18 +24,37 @@ export function exportToExcel(rows, filename = 'my-datesheet.xlsx') {
 
 /**
  * Capture the given DOM element as a PNG image and trigger a download.
+ * Adds 40px white padding on all four sides.
  */
 export async function exportToImage(element, filename = 'my-datesheet.png') {
   if (!element) return;
 
-  const canvas = await html2canvas(element, {
-    scale: 2, // high-res
-    useCORS: true,
-    backgroundColor: '#ffffff',
-  });
+  // Build an off-screen padded wrapper
+  const pad = 40;
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `
+    position: fixed;
+    left: -99999px;
+    top: 0;
+    background: #ffffff;
+    padding: ${pad}px;
+    display: inline-block;
+  `;
+  wrapper.appendChild(element.cloneNode(true));
+  document.body.appendChild(wrapper);
 
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  try {
+    const canvas = await html2canvas(wrapper, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+}
 }

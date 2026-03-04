@@ -17,7 +17,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
   }
 
   return (
-    <div className="table-scroll overflow-x-auto">
+    <div className="table-scroll overflow-x-auto flex justify-center">
       {/* Title sits above the table, not inside it */}
       <div
         ref={ref}
