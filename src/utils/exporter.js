@@ -33,17 +33,11 @@ export async function exportToImage(element, filename = 'my-datesheet.png') {
   element.scrollIntoView({ block: 'start' });
   await new Promise((r) => setTimeout(r, 120)); // let layout settle
 
-  const rect = element.getBoundingClientRect();
-
   const sourceCanvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
-    x: rect.left,
-    y: rect.top,
-    width: rect.width,
-    height: rect.height,
     scrollX: -window.scrollX,
     scrollY: -window.scrollY,
   });
