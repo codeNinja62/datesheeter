@@ -12,9 +12,9 @@ import * as XLSX from 'xlsx';
  *   3. Deduplicate rows that are identical after Faculty removal.
  *
  * Returns: { rows, batches, courses }
- *   rows   – array of { batch, date, day, slot, courseName, courseCode }
+ *   rows   – array of { batch, date, day, slot, courseName }
  *   batches – sorted unique batch names
- *   courses – sorted unique { courseName, courseCode } objects
+ *   courses – sorted unique course name strings
  */
 export function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -66,13 +66,12 @@ export function parseFile(file) {
         const dayIdx = indexOf(['day', 'date']);
         const slotIdx = indexOf(['slot', 'time']);
         const courseNameIdx = indexOf(['course name', 'coursename', 'course_name']);
-        const courseCodeIdx = indexOf(['course code', 'coursecode', 'course_code']);
-        // Faculty column is intentionally ignored
+        // Course Code and Faculty columns are intentionally ignored
 
-        if ([batchIdx, dayIdx, slotIdx, courseNameIdx, courseCodeIdx].includes(-1)) {
+        if ([batchIdx, dayIdx, slotIdx, courseNameIdx].includes(-1)) {
           reject(
             new Error(
-              'Could not find all required columns. Expected: Batch, Day, Slot, Course Name, Course Code.'
+              'Could not find all required columns. Expected: Batch, Day, Slot, Course Name.'
             )
           );
           return;
@@ -82,7 +81,6 @@ export function parseFile(file) {
         const seen = new Set();
         const rows = [];
         const batchSet = new Set();
-        const courseMap = new Map(); // courseCode → courseName
         const courseNameSet = new Set(); // unique course names for selector
 
         for (let i = headerRowIdx + 1; i < json.length; i++) {
@@ -93,21 +91,19 @@ export function parseFile(file) {
           const rawDay = String(r[dayIdx] ?? '').trim();
           const slot = String(r[slotIdx] ?? '').trim();
           const courseName = String(r[courseNameIdx] ?? '').trim();
-          const courseCode = String(r[courseCodeIdx] ?? '').trim();
 
           if (!batch && !courseName) continue; // skip truly empty rows
 
           // --- Split Day into Date & Day ---
           const { date, day } = splitDateDay(rawDay);
 
-          // --- Dedup key (everything except Faculty) ---
-          const key = [batch, date, day, slot, courseName, courseCode].join('||');
+          // --- Dedup key: batch + date + day + slot + courseName ---
+          const key = [batch, date, day, slot, courseName].join('||');
           if (seen.has(key)) continue;
           seen.add(key);
 
-          rows.push({ batch, date, day, slot, courseName, courseCode });
+          rows.push({ batch, date, day, slot, courseName });
           if (batch) batchSet.add(batch);
-          if (courseCode) courseMap.set(courseCode, courseName);
           if (courseName) courseNameSet.add(courseName);
         }
 
