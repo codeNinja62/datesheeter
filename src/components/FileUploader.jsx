@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { Upload, Loader2 } from 'lucide-react';
 
 const ALLOWED_EXT = ['.xlsx', '.xls', '.csv'];
 
@@ -62,7 +63,8 @@ export default function FileUploader({ onFileLoaded, isLoading, onTypeError }) {
       />
       {isLoading ? (
         <>
-          <p className="text-amber-400 font-mono text-[11px] tracking-widest uppercase animate-pulse mb-1">Parsing…</p>
+          <Loader2 className="text-amber-400 animate-spin mb-3" size={18} strokeWidth={2} />
+          <p className="text-amber-400 font-mono text-[11px] tracking-widest uppercase mb-1">Parsing</p>
           <p className="text-white/20 font-mono text-[10px]">Extracting rows</p>
         </>
       ) : (
@@ -70,9 +72,9 @@ export default function FileUploader({ onFileLoaded, isLoading, onTypeError }) {
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-4 transition-colors ${
             isDragging ? 'bg-amber-400/25' : 'bg-amber-400/10'
           }`}>
-            <span className="text-amber-400 text-sm font-bold">↑</span>
+            <Upload className="text-amber-400" size={15} strokeWidth={2.5} />
           </div>
-          <p className={`font-semibold text-sm mb-1 transition-colors ${isDragging ? 'text-amber-400' : 'text-white'}` }>
+          <p className={`font-semibold text-sm mb-1 transition-colors ${isDragging ? 'text-amber-400' : 'text-white'}`}>
             {isDragging ? 'Release to upload' : 'Drop your file here'}
           </p>
           <p className="text-white/30 font-mono text-[10px] tracking-widest">.xlsx · .xls · .csv</p>

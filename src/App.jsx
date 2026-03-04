@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { ArrowLeft, X, Download, Loader2 } from 'lucide-react';
 import FileUploader from './components/FileUploader';
 import ModeToggle from './components/ModeToggle';
 import BatchSelector from './components/BatchSelector';
@@ -127,7 +128,14 @@ export default function App() {
                   : 'text-white/30 hover:text-rose-400'
               }`}
             >
-              {confirmReset ? 'confirm? click again' : '← new file'}
+              {confirmReset ? (
+                'confirm? click again'
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <ArrowLeft size={12} strokeWidth={2.5} />
+                  new file
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -142,9 +150,9 @@ export default function App() {
             <button
               onClick={() => setError('')}
               aria-label="Dismiss error"
-              className="text-rose-400/50 hover:text-rose-300 transition-colors text-base leading-none flex-shrink-0 mt-0.5"
+              className="text-rose-400/50 hover:text-rose-300 transition-colors flex-shrink-0 mt-0.5 flex items-center"
             >
-              ×
+              <X size={14} strokeWidth={2.5} />
             </button>
           </div>
         )}
@@ -215,7 +223,11 @@ export default function App() {
                     disabled={exporting}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-400 text-slate-950 text-[11px] font-mono font-black tracking-widest rounded-xl hover:bg-amber-300 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
                   >
-                    {exporting ? 'Generating…' : '↓ Save as image'}
+                    {exporting ? (
+                      <><Loader2 size={13} strokeWidth={2.5} className="animate-spin" />Generating</>
+                    ) : (
+                      <><Download size={13} strokeWidth={2.5} />Save as image</>
+                    )}
                   </button>
                 </div>
 

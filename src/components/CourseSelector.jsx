@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { X, Check } from 'lucide-react';
 
 export default function CourseSelector({ courses, selectedNames, onSelect }) {
   const [search, setSearch] = useState('');
@@ -56,7 +57,9 @@ export default function CourseSelector({ courses, selectedNames, onSelect }) {
               className="inline-flex items-center gap-1.5 glass text-white/70 text-[11px] font-mono px-3 py-1 rounded-lg"
             >
               {name}
-              <button onClick={() => toggle(name)} className="text-white/30 hover:text-rose-400 transition-colors leading-none">×</button>
+              <button onClick={() => toggle(name)} className="text-white/30 hover:text-rose-400 transition-colors leading-none flex items-center">
+                <X size={10} strokeWidth={3} />
+              </button>
             </span>
           ))}
           <button
@@ -87,7 +90,7 @@ export default function CourseSelector({ courses, selectedNames, onSelect }) {
                   ? 'bg-amber-400 border-amber-400'
                   : 'border-white/20 bg-transparent'
               }`}>
-                {checked && <span className="text-slate-950 text-[8px] leading-none font-black">✓</span>}
+                {checked && <Check className="text-slate-950" size={9} strokeWidth={3.5} />}
               </span>
               <input type="checkbox" checked={checked} onChange={() => toggle(name)} className="sr-only" />
               {name}
