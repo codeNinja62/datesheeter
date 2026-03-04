@@ -6,7 +6,7 @@ import CourseSelector from './components/CourseSelector';
 import DatesheetTable from './components/DatesheetTable';
 import ExportBar from './components/ExportBar';
 import { parseFile, filterByBatch, filterByCourses, sortRows } from './utils/dataProcessor';
-import { exportToExcel, exportToImage } from './utils/exporter';
+import { exportToImage } from './utils/exporter';
 
 export default function App() {
   // Source data after parsing
@@ -63,10 +63,6 @@ export default function App() {
     const el = tableRef.current;
     if (el) exportToImage(el);
   }, []);
-
-  const handleExportExcel = useCallback(() => {
-    exportToExcel(displayRows);
-  }, [displayRows]);
 
   // ---------- Reset ----------
 
@@ -171,7 +167,6 @@ export default function App() {
                   </h3>
                   <ExportBar
                     onExportImage={handleExportImage}
-                    onExportExcel={handleExportExcel}
                     disabled={displayRows.length === 0}
                   />
                 </div>

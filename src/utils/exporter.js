@@ -1,48 +1,36 @@
-import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
-
-/**
- * Export the current filtered rows to a clean .xlsx file.
- */
-export function exportToExcel(rows, filename = 'my-datesheet.xlsx') {
-  const header = ['Time', 'Date', 'Day', 'Subject'];
-  const data = rows.map((r) => [r.slot, r.date, r.day, r.courseName]);
-  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
-
-  // Auto-size columns
-  ws['!cols'] = header.map((_, i) => ({
-    wch: Math.max(
-      header[i].length,
-      ...data.map((row) => String(row[i] || '').length)
-    ) + 2,
-  }));
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Datesheet');
-  XLSX.writeFile(wb, filename);
-}
 
 /**
  * Capture the given DOM element as a PNG image and trigger a download.
  * Adds 40px white padding on all four sides.
+ *
+ * Fix notes:
+ *   - Do NOT use scrollIntoView before capture (it mutates scroll state that
+ *     html2canvas then reads incorrectly).
+ *   - Pass scrollX:0 / scrollY:0 so html2canvas captures the element in its
+ *     own coordinate space rather than applying an offset based on the current
+ *     window scroll position (the old negative values were incorrect).
+ *   - windowWidth/windowHeight are set generously so an overflow:auto parent
+ *     cannot clip a wide table.
  */
 export async function exportToImage(element, filename = 'my-datesheet.png') {
   if (!element) return;
 
-  // Scroll element into view so html2canvas sees it correctly
-  element.scrollIntoView({ block: 'start' });
-  await new Promise((r) => setTimeout(r, 120)); // let layout settle
+  // Give the browser a tick to finish any pending layout/paint.
+  await new Promise((r) => requestAnimationFrame(r));
 
   const sourceCanvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
-    scrollX: -window.scrollX,
-    scrollY: -window.scrollY,
+    scrollX: 0,
+    scrollY: 0,
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight,
   });
 
-  // Composite onto a padded canvas (40px × scale 2 = 80px each side)
+  // Composite onto a padded canvas (40px logical × scale 2 = 80px device pixels each side)
   const pad = 80;
   const padded = document.createElement('canvas');
   padded.width = sourceCanvas.width + pad * 2;
