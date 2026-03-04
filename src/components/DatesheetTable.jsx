@@ -1,7 +1,9 @@
 import { forwardRef } from 'react';
 
+const innerBorder = '1px solid #888';
+
 const cell = {
-  border: '2px solid #000',
+  border: innerBorder,
   padding: '10px 28px',
   textAlign: 'center',
   whiteSpace: 'nowrap',
@@ -18,7 +20,6 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
 
   return (
     <div className="table-scroll overflow-x-auto flex justify-center">
-      {/* Title sits above the table, not inside it */}
       <div
         ref={ref}
         className="inline-block"
@@ -37,43 +38,46 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
           {title || 'Datesheet'}
         </p>
 
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#F4B183' }}>
-              {['Time', 'Date', 'Day', 'Subject'].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    ...cell,
-                    fontWeight: '900',
-                    fontSize: '1rem',
-                    color: '#000',
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} style={{ backgroundColor: '#fff' }}>
-                <td style={{ ...cell, fontWeight: '600' }}>{r.slot}</td>
-                <td style={{ ...cell, fontWeight: '600' }}>{r.date}</td>
-                <td style={{ ...cell, fontWeight: '600' }}>{r.day}</td>
-                <td
-                  style={{
-                    ...cell,
-                    fontWeight: '900',
-                    backgroundColor: '#FFFF00',
-                  }}
-                >
-                  {r.courseName}
-                </td>
+        {/* Thick outer border via wrapper div */}
+        <div style={{ border: '3px solid #000', display: 'inline-block' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#F4B183' }}>
+                {['Time', 'Date', 'Day', 'Subject'].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      ...cell,
+                      fontWeight: '900',
+                      fontSize: '1rem',
+                      color: '#000',
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} style={{ backgroundColor: '#fff' }}>
+                  <td style={{ ...cell, fontWeight: '600' }}>{r.slot}</td>
+                  <td style={{ ...cell, fontWeight: '600' }}>{r.date}</td>
+                  <td style={{ ...cell, fontWeight: '600' }}>{r.day}</td>
+                  <td
+                    style={{
+                      ...cell,
+                      fontWeight: '900',
+                      backgroundColor: '#FFFF00',
+                    }}
+                  >
+                    {r.courseName}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
