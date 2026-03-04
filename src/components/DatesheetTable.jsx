@@ -6,7 +6,16 @@ const cell = {
   border: innerBorder,
   padding: '10px 28px',
   textAlign: 'center',
+  verticalAlign: 'middle',
   whiteSpace: 'nowrap',
+  fontSize: '0.95rem',
+};
+
+const headerCell = {
+  ...cell,
+  fontSize: '1.1rem',
+  fontWeight: '900',
+  color: '#000',
 };
 
 const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) {
@@ -44,17 +53,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
             <thead>
               <tr style={{ backgroundColor: '#F4B183' }}>
                 {['Time', 'Date', 'Day', 'Subject'].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      ...cell,
-                      fontWeight: '900',
-                      fontSize: '1rem',
-                      color: '#000',
-                    }}
-                  >
-                    {h}
-                  </th>
+                  <th key={h} style={headerCell}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -64,15 +63,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
                   <td style={{ ...cell, fontWeight: '600' }}>{r.slot}</td>
                   <td style={{ ...cell, fontWeight: '600' }}>{r.date}</td>
                   <td style={{ ...cell, fontWeight: '600' }}>{r.day}</td>
-                  <td
-                    style={{
-                      ...cell,
-                      fontWeight: '900',
-                      backgroundColor: '#FFFF00',
-                    }}
-                  >
-                    {r.courseName}
-                  </td>
+                  <td style={{ ...cell, fontWeight: '900', backgroundColor: '#FFFF00' }}>{r.courseName}</td>
                 </tr>
               ))}
             </tbody>
