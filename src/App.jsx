@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import FileUploader from './components/FileUploader';
 import ModeToggle from './components/ModeToggle';
 import BatchSelector from './components/BatchSelector';
@@ -21,6 +21,10 @@ export default function App() {
   const [selectedNames, setSelectedNames] = useState([]);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Two-step confirm state for destructive reset
+  const [confirmReset, setConfirmReset] = useState(false);
+  const confirmTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
 
   // Ref for the table element (used by image export)
   const tableRef = useRef(null);
@@ -68,7 +72,7 @@ export default function App() {
 
   // ---------- Reset ----------
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setAllRows([]);
     setBatches([]);
     setCourses([]);
@@ -76,7 +80,19 @@ export default function App() {
     setSelectedNames([]);
     setFileUploaded(false);
     setError('');
-  };
+    setConfirmReset(false);
+  }, []);
+
+  // Two-step: first click arms, second click (within 3 s) fires
+  const handleResetClick = useCallback(() => {
+    if (!confirmReset) {
+      setConfirmReset(true);
+      confirmTimerRef.current = setTimeout(() => setConfirmReset(false), 3000);
+    } else {
+      clearTimeout(confirmTimerRef.current);
+      handleReset();
+    }
+  }, [confirmReset, handleReset]);
 
   // ---------- Render ----------
 
@@ -93,32 +109,49 @@ export default function App() {
       {/* Header */}
       <header className="glass sticky top-0 z-20">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-4 sm:px-6 py-4">
-          <span className="text-[11px] font-mono font-bold tracking-[0.3em] text-amber-400 uppercase">
+          <span
+            role={fileUploaded ? 'button' : undefined}
+            onClick={fileUploaded ? handleResetClick : undefined}
+            className={`text-[11px] font-mono font-bold tracking-[0.3em] text-amber-400 uppercase ${
+              fileUploaded ? 'cursor-pointer hover:text-amber-300 transition-colors' : ''
+            }`}
+          >
             Datesheet
           </span>
           {fileUploaded && (
             <button
-              onClick={handleReset}
-              className="text-[11px] font-mono text-white/30 hover:text-rose-400 tracking-widest transition-colors"
+              onClick={handleResetClick}
+              className={`text-[11px] font-mono tracking-widest transition-colors ${
+                confirmReset
+                  ? 'text-rose-400 font-bold'
+                  : 'text-white/30 hover:text-rose-400'
+              }`}
             >
-              ← new file
+              {confirmReset ? 'confirm? click again' : '← new file'}
             </button>
           )}
         </div>
       </header>
 
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-14 space-y-12">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-12">
 
         {/* Error */}
         {error && (
-          <div className="glass border-rose-500/30 text-rose-300 rounded-2xl px-5 py-4 text-sm font-mono" style={{ borderColor: 'rgba(244,63,94,0.25)' }}>
-            {error}
+          <div className="glass-error text-rose-300 rounded-2xl px-5 py-3.5 text-sm font-mono flex items-start justify-between gap-4">
+            <span>{error}</span>
+            <button
+              onClick={() => setError('')}
+              aria-label="Dismiss error"
+              className="text-rose-400/50 hover:text-rose-300 transition-colors text-base leading-none flex-shrink-0 mt-0.5"
+            >
+              ×
+            </button>
           </div>
         )}
 
         {/* Upload */}
         {!fileUploaded && (
-          <section className="pt-10 space-y-12">
+          <section className="pt-4 sm:pt-10 space-y-10 sm:space-y-12">
             <div className="space-y-5">
               <p className="text-[11px] font-mono tracking-[0.35em] text-amber-400/70 uppercase">Schedule Generator</p>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.05]">
@@ -139,29 +172,40 @@ export default function App() {
 
             {/* Stats */}
             <div className="glass rounded-2xl px-5 py-3.5 flex flex-wrap gap-x-6 gap-y-2 text-[11px] font-mono w-fit max-w-full">
-              <span className="text-white/35"><span className="text-white font-bold text-sm">{allRows.length}</span> rows</span>
+              <span className="text-white/35"><span className="text-white font-bold text-sm">{allRows.length}</span> exam slots</span>
               <span className="text-white/35"><span className="text-white font-bold text-sm">{batches.length}</span> batches</span>
               <span className="text-white/35"><span className="text-white font-bold text-sm">{courses.length}</span> courses</span>
             </div>
 
             <ModeToggle mode={mode} onModeChange={setMode} />
 
-            {mode === 'batch' ? (
-              <BatchSelector
-                batches={batches}
-                selectedBatch={selectedBatch}
-                onSelect={setSelectedBatch}
-              />
-            ) : (
-              <CourseSelector
-                courses={courses}
-                selectedNames={selectedNames}
-                onSelect={setSelectedNames}
-              />
+            {/* Selector — keyed so swapping modes triggers entrance animation */}
+            <div key={mode} className="animate-fade-in-up">
+              {mode === 'batch' ? (
+                <BatchSelector
+                  batches={batches}
+                  selectedBatch={selectedBatch}
+                  onSelect={setSelectedBatch}
+                />
+              ) : (
+                <CourseSelector
+                  courses={courses}
+                  selectedNames={selectedNames}
+                  onSelect={setSelectedNames}
+                />
+              )}
+            </div>
+
+            {/* Empty state: something selected but 0 rows matched */}
+            {((mode === 'batch' && selectedBatch) || (mode === 'custom' && selectedNames.length > 0))
+              && displayRows.length === 0 && (
+              <p className="text-sm font-mono text-white/25 animate-fade-in-up">
+                No exams found for this selection.
+              </p>
             )}
 
             {displayRows.length > 0 && (
-              <div className="space-y-5">
+              <div className="space-y-5 animate-fade-in-up">
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                   <p className="text-[11px] font-mono text-white/30 tracking-widest">
                     <span className="text-amber-400 font-bold text-sm">{displayRows.length}</span> exams
@@ -189,7 +233,7 @@ export default function App() {
           </section>
         )}
 
-        <footer className="text-[10px] font-mono text-white/15 pt-10 border-t border-white/5 tracking-widest">
+        <footer className="text-xs font-mono text-white/25 pt-10 border-t border-white/[0.06] tracking-widest">
           100% client-side · zero telemetry · zero trust required.
         </footer>
       </main>

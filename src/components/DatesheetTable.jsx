@@ -5,9 +5,16 @@ const BASE_CELL = {
   padding: '11px 28px',
   textAlign: 'center',
   verticalAlign: 'middle',
-  whiteSpace: 'nowrap',
+  // No whiteSpace here — on-screen cells wrap naturally.
+  // The [data-exporting] CSS rule in index.css restores nowrap during export.
   fontSize: '0.92rem',
   color: '#000000',
+};
+
+// Enforces wrapping + min-width on the Subject column only, for screen display.
+const SUBJECT_SCREEN = {
+  minWidth: '160px',
+  wordBreak: 'break-word',
 };
 
 const HEAD_CELL = {
@@ -77,6 +84,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({ rows, title }, ref) 
                   <td style={{ ...BASE_CELL, fontWeight: '600', color: '#000000' }}>{r.day}</td>
                   <td style={{
                     ...BASE_CELL,
+                    ...SUBJECT_SCREEN,
                     fontWeight: '800',
                     color: '#000000',
                     backgroundColor: '#fbbf24',

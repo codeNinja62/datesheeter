@@ -16,20 +16,32 @@ export async function exportToImage(element, filename = 'my-datesheet.png') {
   // Wait for any pending paint to finish.
   await new Promise((r) => requestAnimationFrame(r));
 
+  // Mark the element so CSS can apply export-only rules (e.g. white-space: nowrap)
+  // before we read the scroll dimensions and hand off to html-to-image.
+  element.setAttribute('data-exporting', '');
+  // Wait one more frame so the attribute's CSS takes effect and layout recalculates.
+  await new Promise((r) => requestAnimationFrame(r));
+
   // Render at 2× for crispness on high-DPI screens.
   const SCALE = 2;
 
-  // toPng returns a data-URL of the element rendered at SCALE × native size.
-  const dataUrl = await toPng(element, {
-    pixelRatio: SCALE,
-    backgroundColor: '#ffffff',
-    // Ensure the full element is captured even if a parent clips its overflow.
-    width: element.scrollWidth,
-    height: element.scrollHeight,
-    style: {
-      overflow: 'visible',
-    },
-  });
+  // Capture dimensions AFTER nowrap is applied so nothing is clipped.
+  const captureWidth  = element.scrollWidth;
+  const captureHeight = element.scrollHeight;
+
+  let dataUrl;
+  try {
+    dataUrl = await toPng(element, {
+      pixelRatio: SCALE,
+      backgroundColor: '#ffffff',
+      width: captureWidth,
+      height: captureHeight,
+      style: { overflow: 'visible' },
+    });
+  } finally {
+    // Always remove the attribute, even if toPng throws.
+    element.removeAttribute('data-exporting');
+  }
 
   // Load the captured image so we can read its pixel dimensions.
   const img = await new Promise((resolve, reject) => {

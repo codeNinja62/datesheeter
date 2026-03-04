@@ -16,18 +16,37 @@ export default function CourseSelector({ courses, selectedNames, onSelect }) {
         : [...selectedNames, name]
     );
 
+  const hasFilter = search.length > 0;
+  const showCount = hasFilter || courses.length > 8;
+
   return (
     <div className="w-full max-w-lg space-y-3">
-      <label className="block text-[10px] font-mono text-white/30 tracking-[0.3em] uppercase">Courses</label>
+      <div className="flex items-center justify-between">
+        <label className="block text-[10px] font-mono text-white/30 tracking-[0.3em] uppercase">Courses</label>
+        {showCount && (
+          <span className="text-[10px] font-mono text-white/20">
+            {hasFilter && filtered.length !== courses.length
+              ? `${filtered.length} of ${courses.length}`
+              : `${courses.length} total`}
+          </span>
+        )}
+      </div>
 
       <input
         type="text"
-        placeholder="search…"
+        placeholder="search courses…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full glass rounded-xl px-4 py-2.5 text-sm font-mono text-white
-          placeholder:text-white/20 focus:outline-none focus:border-amber-400/50 transition-all"
+        className="w-full glass glass-focus rounded-xl px-4 py-2.5 text-sm font-mono text-white
+          placeholder:text-white/20 transition-all"
       />
+
+      {/* Hint — shown before any selection is made */}
+      {selectedNames.length === 0 && (
+        <p className="text-[11px] font-mono text-white/20 leading-relaxed">
+          Select one or more courses to build your personal datesheet.
+        </p>
+      )}
 
       {selectedNames.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -58,12 +77,12 @@ export default function CourseSelector({ courses, selectedNames, onSelect }) {
           return (
             <label
               key={name}
-              className={`flex items-center gap-3 px-5 py-3 cursor-pointer text-[11px] font-mono transition-all
+              className={`checkbox-focus-within flex items-center gap-3 px-5 py-3 cursor-pointer text-[11px] font-mono transition-all
                 hover:bg-white/5 ${
                 checked ? 'text-amber-400' : 'text-white/45'
               }`}
             >
-              <span className={`w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+              <span className={`checkbox-ring w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
                 checked
                   ? 'bg-amber-400 border-amber-400'
                   : 'border-white/20 bg-transparent'
