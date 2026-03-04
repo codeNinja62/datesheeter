@@ -57,4 +57,3 @@ export async function exportToImage(element, filename = 'my-datesheet.png') {
     document.body.removeChild(wrapper);
   }
 }
-}
