@@ -32,8 +32,31 @@ export function parseFile(file) {
           return;
         }
 
+        // ---------- Find the real header row ----------
+        // The sheet may have title rows above the actual column headers
+        // (e.g. "NUST School of..." / "UG Datesheet for MSE - Spring 2026").
+        // Scan until we find a row that contains "batch" and "day".
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(json.length, 10); i++) {
+          const row = json[i];
+          if (!Array.isArray(row)) continue;
+          const cells = row.map((c) => String(c ?? '').trim().toLowerCase());
+          if (cells.some((c) => c === 'batch') && cells.some((c) => c.includes('day') || c.includes('date'))) {
+            headerRowIdx = i;
+            break;
+          }
+        }
+        if (headerRowIdx === -1) {
+          reject(
+            new Error(
+              'Could not locate the header row. Make sure your file has columns: Batch, Day, Slot, Course Name, Course Code.'
+            )
+          );
+          return;
+        }
+
         // ---------- Normalise header row ----------
-        const rawHeaders = json[0].map((h) => String(h).trim().toLowerCase());
+        const rawHeaders = json[headerRowIdx].map((h) => String(h ?? '').trim().toLowerCase());
 
         // Build an index map so we can handle slight naming variations
         const indexOf = (candidates) =>
@@ -55,13 +78,13 @@ export function parseFile(file) {
           return;
         }
 
-        // ---------- Parse rows ----------
+        // ---------- Parse rows (start after the header row) ----------
         const seen = new Set();
         const rows = [];
         const batchSet = new Set();
         const courseMap = new Map(); // courseCode → courseName
 
-        for (let i = 1; i < json.length; i++) {
+        for (let i = headerRowIdx + 1; i < json.length; i++) {
           const r = json[i];
           if (!r || r.length === 0) continue;
 
