@@ -175,7 +175,15 @@ export default function App() {
                     disabled={displayRows.length === 0}
                   />
                 </div>
-                <DatesheetTable rows={displayRows} ref={tableRef} />
+                <DatesheetTable
+                  rows={displayRows}
+                  ref={tableRef}
+                  title={
+                    mode === 'batch' && selectedBatch
+                      ? `Datesheet — ${selectedBatch}`
+                      : 'Custom Datesheet'
+                  }
+                />
               </div>
             )}
           </section>

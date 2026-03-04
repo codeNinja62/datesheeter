@@ -5,8 +5,8 @@ import html2canvas from 'html2canvas';
  * Export the current filtered rows to a clean .xlsx file.
  */
 export function exportToExcel(rows, filename = 'my-datesheet.xlsx') {
-  const header = ['Date', 'Day', 'Time', 'Course Name'];
-  const data = rows.map((r) => [r.date, r.day, r.slot, r.courseName]);
+  const header = ['Time', 'Date', 'Day', 'Subject'];
+  const data = rows.map((r) => [r.slot, r.date, r.day, r.courseName]);
   const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
 
   // Auto-size columns
