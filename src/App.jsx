@@ -27,6 +27,8 @@ export default function App() {
 
   // ---------- Handlers ----------
 
+  const handleTypeError = useCallback((msg) => setError(msg), []);
+
   const handleFile = useCallback(async (file) => {
     setIsLoading(true);
     setError('');
@@ -57,9 +59,12 @@ export default function App() {
     const el = tableRef.current;
     if (!el || exporting) return;
     setExporting(true);
-    try { await exportToImage(el); }
+    const slug = (mode === 'batch' && selectedBatch)
+      ? selectedBatch.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+      : 'custom';
+    try { await exportToImage(el, `datesheet-${slug}.png`); }
     finally { setExporting(false); }
-  }, [exporting]);
+  }, [exporting, mode, selectedBatch]);
 
   // ---------- Reset ----------
 
@@ -124,7 +129,7 @@ export default function App() {
                 Drop the master Excel datesheet. Receive surgical precision — client-side, zero telemetry, zero compromise.
               </p>
             </div>
-            <FileUploader onFileLoaded={handleFile} isLoading={isLoading} />
+            <FileUploader onFileLoaded={handleFile} isLoading={isLoading} onTypeError={handleTypeError} />
           </section>
         )}
 

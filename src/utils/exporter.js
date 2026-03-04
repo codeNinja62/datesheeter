@@ -51,8 +51,13 @@ export async function exportToImage(element, filename = 'my-datesheet.png') {
   ctx.drawImage(img, pad, pad);
 
   // Trigger the file download.
+  // The anchor must be in the DOM before .click() is called — Firefox silently
+  // ignores clicks on detached elements.
   const link = document.createElement('a');
   link.download = filename;
   link.href = canvas.toDataURL('image/png');
+  link.style.display = 'none';
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
 }

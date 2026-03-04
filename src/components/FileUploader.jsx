@@ -1,26 +1,59 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-export default function FileUploader({ onFileLoaded, isLoading }) {
+const ALLOWED_EXT = ['.xlsx', '.xls', '.csv'];
+
+function isAllowed(file) {
+  if (!file) return false;
+  const name = file.name.toLowerCase();
+  return ALLOWED_EXT.some((ext) => name.endsWith(ext));
+}
+
+export default function FileUploader({ onFileLoaded, isLoading, onTypeError }) {
+  const inputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const handleDrop = useCallback((e) => {
     e.preventDefault(); e.stopPropagation();
+    setIsDragging(false);
     const file = e.dataTransfer?.files?.[0];
-    if (file) onFileLoaded(file);
-  }, [onFileLoaded]);
+    if (!file) return;
+    if (!isAllowed(file)) {
+      onTypeError?.(`"${file.name}" is not supported. Use .xlsx, .xls, or .csv.`);
+      return;
+    }
+    onFileLoaded(file);
+  }, [onFileLoaded, onTypeError]);
 
   const handleChange = useCallback((e) => {
     const file = e.target.files?.[0];
+    // Reset input so the same file can be re-selected after a reset
+    if (inputRef.current) inputRef.current.value = '';
     if (file) onFileLoaded(file);
   }, [onFileLoaded]);
+
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    // Only clear when leaving the zone itself, not a child element
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsDragging(false);
+  }, []);
 
   return (
     <div
       onDrop={handleDrop}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-      className="relative flex flex-col items-start justify-center w-full max-w-sm glass rounded-2xl p-8 cursor-pointer group
-        hover:border-amber-400/40 transition-all duration-300"
-      style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      className={`relative flex flex-col items-start justify-center w-full max-w-sm rounded-2xl p-8 cursor-pointer
+        transition-all duration-300 glass
+        ${isDragging ? '[border-color:rgb(251_191_36_/_0.6)] bg-amber-400/5' : 'hover:[border-color:rgb(251_191_36_/_0.35)]'}`}
     >
       <input
+        ref={inputRef}
         type="file"
         accept=".xlsx,.xls,.csv"
         onChange={handleChange}
@@ -34,11 +67,13 @@ export default function FileUploader({ onFileLoaded, isLoading }) {
         </>
       ) : (
         <>
-          <div className="w-8 h-8 rounded-xl bg-amber-400/10 flex items-center justify-center mb-4 group-hover:bg-amber-400/20 transition-colors">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-4 transition-colors ${
+            isDragging ? 'bg-amber-400/25' : 'bg-amber-400/10'
+          }`}>
             <span className="text-amber-400 text-sm font-bold">↑</span>
           </div>
-          <p className="text-white font-semibold text-sm mb-1 group-hover:text-amber-400 transition-colors">
-            Drop your file here
+          <p className={`font-semibold text-sm mb-1 transition-colors ${isDragging ? 'text-amber-400' : 'text-white'}` }>
+            {isDragging ? 'Release to upload' : 'Drop your file here'}
           </p>
           <p className="text-white/30 font-mono text-[10px] tracking-widest">.xlsx · .xls · .csv</p>
         </>
