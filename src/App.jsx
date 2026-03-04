@@ -30,14 +30,16 @@ export default function App() {
   useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
 
   // ── Timetable state ─────────────────────────────────────────────────────────
-  const [ttTimetables, setTtTimetables]       = useState({});
-  const [ttBatches, setTtBatches]             = useState([]);
-  const [ttSelectedBatch, setTtSelectedBatch] = useState('');
-  const [ttIsLoading, setTtIsLoading]         = useState(false);
-  const [ttError, setTtError]                 = useState('');
-  const [ttFileUploaded, setTtFileUploaded]   = useState(false);
-  const [ttExporting, setTtExporting]         = useState(false);
-  const [ttConfirmReset, setTtConfirmReset]   = useState(false);
+  const [ttTimetables, setTtTimetables]           = useState({});  // { sheet: { section: data } }
+  const [ttSheets, setTtSheets]                   = useState([]);
+  const [ttSections, setTtSections]               = useState({});  // { sheet: [section, …] }
+  const [ttSelectedSheet, setTtSelectedSheet]     = useState('');
+  const [ttSelectedSection, setTtSelectedSection] = useState('');
+  const [ttIsLoading, setTtIsLoading]             = useState(false);
+  const [ttError, setTtError]                     = useState('');
+  const [ttFileUploaded, setTtFileUploaded]       = useState(false);
+  const [ttExporting, setTtExporting]             = useState(false);
+  const [ttConfirmReset, setTtConfirmReset]       = useState(false);
   const ttConfirmTimerRef = useRef(null);
   useEffect(() => () => clearTimeout(ttConfirmTimerRef.current), []);
 
@@ -66,7 +68,7 @@ export default function App() {
     return [];
   }, [allRows, mode, selectedBatch, selectedNames]);
 
-  const currentTimetable = ttTimetables[ttSelectedBatch] ?? null;
+  const currentTimetable = ttTimetables?.[ttSelectedSheet]?.[ttSelectedSection] ?? null;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Datesheet handlers
@@ -132,8 +134,10 @@ export default function App() {
     try {
       const result = await parseTimetableFile(file);
       setTtTimetables(result.timetables);
-      setTtBatches(result.batches);
-      setTtSelectedBatch('');
+      setTtSheets(result.sheets);
+      setTtSections(result.sections);
+      setTtSelectedSheet('');
+      setTtSelectedSection('');
       setTtFileUploaded(true);
     } catch (err) {
       setTtError(err.message || 'Something went wrong while parsing the timetable file.');
@@ -146,15 +150,15 @@ export default function App() {
     const el = ttGridRef.current;
     if (!el || ttExporting) return;
     setTtExporting(true);
-    const slug = ttSelectedBatch.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const slug = ttSelectedSection.replace(/[^a-z0-9]/gi, '-').toLowerCase();
     try { await exportToImage(el, `timetable-${slug}.png`); }
     finally { setTtExporting(false); }
-  }, [ttExporting, ttSelectedBatch]);
+  }, [ttExporting, ttSelectedSection]);
 
   const handleTtReset = useCallback(() => {
-    setTtTimetables({}); setTtBatches([]);
-    setTtSelectedBatch(''); setTtFileUploaded(false);
-    setTtError(''); setTtConfirmReset(false);
+    setTtTimetables({}); setTtSheets([]); setTtSections({});
+    setTtSelectedSheet(''); setTtSelectedSection('');
+    setTtFileUploaded(false); setTtError(''); setTtConfirmReset(false);
   }, []);
 
   const handleTtResetClick = useCallback(() => {
@@ -393,27 +397,49 @@ export default function App() {
                 {/* Stats bar */}
                 <div className="glass rounded-xl px-4 py-2 inline-flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] font-mono">
                   <span className="text-white/35">
-                    <span className="text-white font-bold text-sm">{ttBatches.length}</span> sections
+                    <span className="text-white font-bold text-sm">{ttSheets.length}</span> {ttSheets.length === 1 ? 'batch' : 'batches'}
                   </span>
+                  {ttSelectedSheet && (
+                    <span className="text-white/35">
+                      <span className="text-white font-bold text-sm">{(ttSections[ttSelectedSheet] || []).length}</span> sections
+                    </span>
+                  )}
                   {currentTimetable && (
                     <span className="text-white/35">
-                      <span className="text-white font-bold text-sm">{currentTimetable.timeSlots.length}</span> time slots
+                      <span className="text-white font-bold text-sm">{currentTimetable.slots.length}</span> time slots
                     </span>
                   )}
                 </div>
 
-                {/* Batch selector */}
-                <div className="animate-fade-in-up">
-                  <BatchSelector
-                    batches={ttBatches}
-                    selectedBatch={ttSelectedBatch}
-                    onSelect={setTtSelectedBatch}
-                  />
+                {/* Step 1: select batch/sheet */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-mono text-white/25 tracking-widest uppercase">Step 1 — batch</p>
+                  <div className="animate-fade-in-up">
+                    <BatchSelector
+                      batches={ttSheets}
+                      selectedBatch={ttSelectedSheet}
+                      onSelect={(s) => { setTtSelectedSheet(s); setTtSelectedSection(''); }}
+                    />
+                  </div>
                 </div>
 
-                {ttSelectedBatch && !currentTimetable && (
+                {/* Step 2: select section within batch */}
+                {ttSelectedSheet && (ttSections[ttSelectedSheet] || []).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-mono text-white/25 tracking-widest uppercase">Step 2 — section</p>
+                    <div className="animate-fade-in-up" key={ttSelectedSheet}>
+                      <BatchSelector
+                        batches={ttSections[ttSelectedSheet]}
+                        selectedBatch={ttSelectedSection}
+                        onSelect={setTtSelectedSection}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {ttSelectedSection && !currentTimetable && (
                   <p className="text-sm font-mono text-white/25 animate-fade-in-up">
-                    No timetable data found for this batch.
+                    No timetable data found for this section.
                   </p>
                 )}
 
@@ -421,7 +447,7 @@ export default function App() {
                   <div className="space-y-5 animate-fade-in-up">
                     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                       <p className="text-[11px] font-mono text-white/30 tracking-widest">
-                        <span className="text-amber-400 font-bold text-sm">{ttSelectedBatch}</span>
+                        <span className="text-amber-400 font-bold text-sm">{ttSelectedSection}</span>
                       </p>
                       <button
                         onClick={handleTtExportImage}

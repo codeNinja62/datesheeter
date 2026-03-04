@@ -2,10 +2,39 @@ import * as XLSX from 'xlsx';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+// Matches "0800-0950", "08:00-09:50", "800-950", "1400–1550" etc.
 const TIME_SLOT_RE = /^\d{3,4}\s*[-–]\s*\d{3,4}$|^\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+//
+// Returns:
+//   {
+//     sheets:     string[]                          — ordered sheet names
+//     sections:   { [sheet]: string[] }             — section titles per sheet
+//     timetables: { [sheet]: { [section]: data } }  — parsed grids
+//   }
+//
+// Each "data" object:
+//   {
+//     title:          string
+//     days:           string[]                  — e.g. ['Monday','Tuesday',…]
+//     slots:          SlotEntry[]
+//     lunchAfterSlot: string | null             — time string after which lunch row appears
+//     legend:         object[]
+//   }
+//
+// SlotEntry:
+//   {
+//     time: string,
+//     rows: Array<{ [day]: string }>            — one entry per physical Excel row
+//   }
+//
+// Each physical Excel row in a time-slot block becomes exactly one entry in
+// `rows`.  Day cells that are empty contain ''.  The TimetableGrid renders one
+// <tr> per entry, with the time cell having rowspan = rows.length.
+//
 
 export function parseTimetableFile(file) {
   return new Promise((resolve, reject) => {
@@ -21,29 +50,34 @@ export function parseTimetableFile(file) {
           return;
         }
 
-        // Each sheet may contain multiple stacked section grids.
-        // We flatten them all into a single timetables map keyed by section title.
-        const timetables = {};
-        const batches    = [];
+        const sheets     = [];
+        const sections   = {};   // { sheetName: [sectionTitle, …] }
+        const timetables = {};   // { sheetName: { sectionTitle: data } }
         const errors     = [];
 
         for (const sheetName of wb.SheetNames) {
           try {
-            const sections = parseSections(wb.Sheets[sheetName], sheetName);
-            for (const section of sections) {
-              // Deduplicate keys in case two sheets share a title
-              let key = section.title;
+            const parsed = parseSheet(wb.Sheets[sheetName], sheetName);
+            if (!parsed.length) continue;
+
+            sheets.push(sheetName);
+            sections[sheetName]   = [];
+            timetables[sheetName] = {};
+
+            for (const sec of parsed) {
+              // Deduplicate titles within the same sheet
+              let key = sec.title;
               let n = 2;
-              while (timetables[key]) key = `${section.title} (${n++})`;
-              timetables[key] = section;
-              batches.push(key);
+              while (timetables[sheetName][key]) key = `${sec.title} (${n++})`;
+              timetables[sheetName][key] = sec;
+              sections[sheetName].push(key);
             }
           } catch (err) {
             errors.push(`  • ${sheetName}: ${err.message}`);
           }
         }
 
-        if (!batches.length) {
+        if (!sheets.length) {
           reject(new Error(
             'No timetable data could be extracted from this file.' +
             (errors.length ? '\n\nSheet details:\n' + errors.join('\n') : '')
@@ -51,7 +85,7 @@ export function parseTimetableFile(file) {
           return;
         }
 
-        resolve({ batches, timetables });
+        resolve({ sheets, sections, timetables });
       } catch (err) {
         reject(new Error(`Could not read file: ${err.message}`));
       }
@@ -63,24 +97,21 @@ export function parseTimetableFile(file) {
   });
 }
 
-// ─── Sheet → multiple sections ────────────────────────────────────────────────
+// ─── Sheet → array of section objects ─────────────────────────────────────────
 //
-// A single sheet may contain several stacked timetable grids, one per section
-// (e.g. 13A, 13B, 13C …).  Each grid is preceded by a title row and a
-// day-header row (Monday Tuesday … ).  We detect every day-header row and
-// parse the block of rows beneath it as an independent section.
-//
-// At the very bottom of the sheet there is an optional shared legend table
-// (Code / Subject / Dept / Instructor …) that applies to all sections.
+// One sheet may contain several stacked grids (one per section).
+// We find every day-header row (≥3 day-name cells) and treat each as the
+// start of a new section.  The bottom of the sheet may have a shared legend
+// table (Code / Subject / Dept …) that is attached to every section.
 //
 
-function parseSections(sheet, sheetName) {
+function parseSheet(sheet, sheetName) {
   if (!sheet['!ref']) throw new Error('Sheet is empty.');
 
   const range  = XLSX.utils.decode_range(sheet['!ref']);
   const merges = sheet['!merges'] || [];
 
-  // ── 1. Build flat 2D grid with merged-cell values propagated ─────────────
+  // ── 1. Build flat 2D grid ──────────────────────────────────────────────────
   const grid = [];
   for (let r = range.s.r; r <= range.e.r; r++) {
     grid[r] = [];
@@ -90,9 +121,12 @@ function parseSections(sheet, sheetName) {
     }
   }
 
-  // mergeNonOrigin: cells that are non-top-left of a merged region.
-  // We skip these when reading time slots / course text to avoid duplicates.
-  const mergeNonOrigin = new Set();
+  // mergeOrigins: top-left cell of each merged region.
+  // mergeNonOrigin: every other cell in the region.
+  // We propagate the origin value into the whole region in the grid so that
+  // repeated reads still see the text, but we track non-origins so we don't
+  // double-count content.
+  const mergeNonOrigin = new Set();  // "r,c"
   for (const { s, e } of merges) {
     const val = grid[s.r]?.[s.c] ?? '';
     for (let r = s.r; r <= e.r; r++) {
@@ -106,52 +140,48 @@ function parseSections(sheet, sheetName) {
     }
   }
 
-  // ── 2. Find all day-header rows ───────────────────────────────────────────
-  //    A day-header row has ≥ 3 cells whose text exactly matches a day name.
-  const dayHeaderRows = []; // [{ rowIdx, dayColumns, timeColIdx }]
+  // ── 2. Locate all day-header rows ──────────────────────────────────────────
+  const dayHeaderRows = [];
 
   for (let r = range.s.r; r <= range.e.r; r++) {
     const row = grid[r] || [];
-    const hits = row.filter((cell) => {
+    const dayHits = row.filter((cell) => {
       const lc = String(cell ?? '').toLowerCase().trim();
-      return DAY_NAMES.some((d) => lc === d);
+      return DAY_NAMES.includes(lc);
     });
-    if (hits.length >= 3) {
-      let timeColIdx = range.s.c;
-      const dayColumns = [];
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const lc = String(row[c] ?? '').toLowerCase().trim();
-        if (lc.includes('time') || lc === 'time / days' || lc === 'time/days') {
-          timeColIdx = c;
-        }
-        const dayName = DAY_NAMES.find((d) => lc === d);
-        if (dayName) dayColumns.push({ day: cap(dayName), colIdx: c });
+    if (dayHits.length < 3) continue;
+
+    let timeColIdx = range.s.c;
+    const dayColumns = [];
+
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const lc = String(row[c] ?? '').toLowerCase().trim();
+      if (lc === 'time' || lc.includes('time') && lc.includes('day')) {
+        timeColIdx = c;
+        continue;
       }
-      if (dayColumns.length >= 3) {
-        dayHeaderRows.push({ rowIdx: r, dayColumns, timeColIdx });
-      }
+      const dn = DAY_NAMES.find((d) => d === lc);
+      if (dn) dayColumns.push({ day: cap(dn), colIdx: c });
+    }
+
+    if (dayColumns.length >= 3) {
+      dayHeaderRows.push({ rowIdx: r, dayColumns, timeColIdx });
     }
   }
 
   if (!dayHeaderRows.length) {
-    throw new Error('No day-header row (Monday, Tuesday …) found in this sheet.');
+    throw new Error('No day-header row (Monday, Tuesday …) found.');
   }
 
-  // ── 3. Find shared legend start row ──────────────────────────────────────
-  //    The legend is a table at the very bottom (after all section grids).
-  //    It starts with a header row whose first non-empty cell is "Code" /
-  //    "Course Code" etc.  We parse it once and share it across sections.
-  let legendStartRow  = range.e.r + 1; // default: no legend
-  let legendHeaders   = null;
-  const sharedLegend  = [];
+  // ── 3. Locate shared legend at bottom ─────────────────────────────────────
+  let legendStartRow = range.e.r + 1;
+  const sharedLegend = [];
 
   for (let r = range.s.r; r <= range.e.r; r++) {
-    const row  = grid[r] || [];
-    const first = String(row[range.s.c] ?? '').trim().toLowerCase();
-    if (first === 'code' || first.includes('course code')) {
+    const first = String(grid[r]?.[range.s.c] ?? '').trim().toLowerCase();
+    if (first === 'code' || first === 'course code') {
       legendStartRow = r;
-      legendHeaders  = row.map((c) => String(c ?? '').trim()).filter(Boolean);
-      // Parse legend data rows
+      const headers = (grid[r] || []).map((c) => String(c ?? '').trim()).filter(Boolean);
       for (let lr = r + 1; lr <= range.e.r; lr++) {
         const lrow = grid[lr] || [];
         const lFirst = String(lrow[range.s.c] ?? '').trim();
@@ -159,13 +189,12 @@ function parseSections(sheet, sheetName) {
         const entry = {};
         let hi = 0;
         for (let c = range.s.c; c <= range.e.c; c++) {
-          const val = String(lrow[c] ?? '').trim();
-          if (!val) { hi++; continue; }
-          const header = legendHeaders?.[hi] ?? `col${c}`;
-          entry[header] = val;
+          const v = String(lrow[c] ?? '').trim();
+          const h = headers[hi] ?? `col${c}`;
+          entry[h] = v;
           hi++;
         }
-        if (Object.keys(entry).length) sharedLegend.push(entry);
+        if (Object.keys(entry).some((k) => entry[k])) sharedLegend.push(entry);
       }
       break;
     }
@@ -175,86 +204,86 @@ function parseSections(sheet, sheetName) {
   const sections = [];
 
   for (let si = 0; si < dayHeaderRows.length; si++) {
-    const { rowIdx: dayHeaderRow, dayColumns, timeColIdx } = dayHeaderRows[si];
+    const { rowIdx: headerRow, dayColumns, timeColIdx } = dayHeaderRows[si];
 
-    // Section title: work backwards from dayHeaderRow to find the nearest
-    // non-empty, non-day-header row with meaningful text (>10 chars).
+    // --- Title: nearest non-empty text row above this header -----------------
     let title = sheetName;
-    const prevDayHeader = si > 0 ? dayHeaderRows[si - 1].rowIdx : range.s.r - 1;
-    for (let tr = dayHeaderRow - 1; tr > prevDayHeader; tr--) {
-      const txt = (grid[tr] || [])
-        .map((c) => String(c ?? '').trim())
-        .filter(Boolean)
-        .join(' ')
-        .trim();
+    const prevHeader = si > 0 ? dayHeaderRows[si - 1].rowIdx : range.s.r - 1;
+    for (let tr = headerRow - 1; tr > prevHeader; tr--) {
+      const txt = (grid[tr] || []).map((c) => String(c ?? '').trim()).filter(Boolean).join(' ').trim();
       if (txt.length > 10) { title = txt; break; }
     }
 
-    // Block of rows to process: from dayHeaderRow+1 up to (but not including)
-    // the next day-header row, or the legend start, whichever comes first.
+    // --- Row range for this section ------------------------------------------
     const blockEnd = si < dayHeaderRows.length - 1
       ? Math.min(dayHeaderRows[si + 1].rowIdx - 1, legendStartRow - 1)
       : legendStartRow - 1;
 
-    const timeSlots   = [];
-    const cells       = {};
-    let   currentSlot = null;
-    let   lunchAfter  = null;
+    // --- Walk rows and build slot→rows structure -----------------------------
+    //
+    // Each physical Excel row in a time-slot block becomes one entry in the
+    // slot's `rows` array.  The time cell is merged vertically so only the
+    // origin row has the time value; subsequent rows have it as a non-origin.
+    // We detect a new slot when the time cell matches TIME_SLOT_RE and is
+    // the origin cell (not in mergeNonOrigin).
+    //
+    const slots       = [];   // [{ time, rows: [{day:string}] }]
+    let currentSlot   = null; // index into slots[]
+    let lunchAfterSlot = null;
 
-    for (let r = dayHeaderRow + 1; r <= blockEnd; r++) {
+    for (let r = headerRow + 1; r <= blockEnd; r++) {
       const row      = grid[r] || [];
       const timeCell = String(row[timeColIdx] ?? '').trim();
       const timeLc   = timeCell.toLowerCase();
 
-      // Skip fully-empty rows
-      if (!timeCell && row.every((c) => !String(c ?? '').trim())) continue;
+      // Skip completely empty rows
+      if (row.every((c) => !String(c ?? '').trim())) continue;
 
-      // Lunch / Prayer Break separator
+      // Lunch / Prayer Break marker
       if (timeLc.includes('lunch') || timeLc.includes('prayer') || timeLc.includes('namaz')) {
-        lunchAfter = currentSlot;
+        lunchAfterSlot = currentSlot !== null ? slots[currentSlot].time : null;
         continue;
       }
 
-      // Time slot detection
+      // New time slot starts when the origin cell matches the time pattern
       if (TIME_SLOT_RE.test(timeCell) && !mergeNonOrigin.has(`${r},${timeColIdx}`)) {
-        currentSlot = timeCell;
-        if (!timeSlots.includes(currentSlot)) {
-          timeSlots.push(currentSlot);
-          cells[currentSlot] = {};
-          for (const { day } of dayColumns) cells[currentSlot][day] = [];
-        }
+        slots.push({ time: timeCell, rows: [] });
+        currentSlot = slots.length - 1;
       }
 
-      if (!currentSlot) continue;
+      if (currentSlot === null) continue;  // rows before any slot — skip
 
-      // Collect course text for each day column
+      // Build a row dict for this physical row across all day columns.
+      // Only read a day cell if it is NOT a non-origin merged cell — otherwise
+      // we'd be copying the same text from a vertically-merged course cell into
+      // multiple rows, making duplicates.
+      const rowDict = {};
+      let hasContent = false;
       for (const { day, colIdx } of dayColumns) {
-        if (mergeNonOrigin.has(`${r},${colIdx}`)) continue;
-        const raw = String(row[colIdx] ?? '').trim();
-        if (!raw) continue;
-        const lines = raw.split(/\n/).map((l) => l.trim()).filter(Boolean);
-        for (const line of lines) {
-          if (!cells[currentSlot][day].includes(line)) {
-            cells[currentSlot][day].push(line);
-          }
+        let val = '';
+        if (!mergeNonOrigin.has(`${r},${colIdx}`)) {
+          val = String(row[colIdx] ?? '').trim();
         }
+        rowDict[day] = val;
+        if (val) hasContent = true;
+      }
+
+      if (hasContent) {
+        slots[currentSlot].rows.push(rowDict);
       }
     }
 
-    if (!timeSlots.length) continue; // empty block — skip
+    // Drop slots with no rows
+    const validSlots = slots.filter((s) => s.rows.length > 0);
+    if (!validSlots.length) continue;
 
     sections.push({
       title,
       days: dayColumns.map((d) => d.day),
-      timeSlots,
-      cells,
-      lunchAfter,
+      slots: validSlots,
+      lunchAfterSlot,
       legend: sharedLegend,
     });
-  }
-
-  if (!sections.length) {
-    throw new Error('No time slots found in any section (expected format: 0800-0950).');
   }
 
   return sections;
