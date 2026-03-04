@@ -113,11 +113,11 @@ export default function App() {
           <span
             role={fileUploaded ? 'button' : undefined}
             onClick={fileUploaded ? handleResetClick : undefined}
-            className={`text-[11px] font-mono font-bold tracking-[0.3em] text-amber-400 uppercase ${
-              fileUploaded ? 'cursor-pointer hover:text-amber-300 transition-colors' : ''
+            className={`text-[11px] font-mono font-bold tracking-[0.3em] uppercase select-none ${
+              fileUploaded ? 'cursor-pointer' : ''
             }`}
           >
-            Datesheet
+            <span className="text-white/40">date</span><span className={`text-amber-400 transition-colors ${fileUploaded ? 'hover:text-amber-300' : ''}`}>sheeter</span>
           </span>
           {fileUploaded && (
             <button
@@ -161,7 +161,9 @@ export default function App() {
         {!fileUploaded && (
           <section className="pt-4 sm:pt-10 space-y-10 sm:space-y-12">
             <div className="space-y-5">
-              <p className="text-[11px] font-mono tracking-[0.35em] text-amber-400/70 uppercase">Schedule Generator</p>
+              <p className="text-[11px] font-mono tracking-[0.35em] uppercase">
+                <span className="text-white/25">date</span><span className="text-amber-400/70">sheeter</span>
+              </p>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.05]">
                 Your schedule.<br />
                 <span className="text-amber-400">Flawlessly.</span>
