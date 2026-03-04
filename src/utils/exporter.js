@@ -29,31 +29,27 @@ export function exportToExcel(rows, filename = 'my-datesheet.xlsx') {
 export async function exportToImage(element, filename = 'my-datesheet.png') {
   if (!element) return;
 
-  // Build an off-screen padded wrapper
-  const pad = 40;
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = `
-    position: fixed;
-    left: -99999px;
-    top: 0;
-    background: #ffffff;
-    padding: ${pad}px;
-    display: inline-block;
-  `;
-  wrapper.appendChild(element.cloneNode(true));
-  document.body.appendChild(wrapper);
+  // Capture the element as-is at high resolution
+  const sourceCanvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+  });
 
-  try {
-    const canvas = await html2canvas(wrapper, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-    });
-    const link = document.createElement('a');
-    link.download = filename;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  } finally {
-    document.body.removeChild(wrapper);
-  }
+  // Draw onto a new canvas with 40px (×2 for scale) padding on all sides
+  const pad = 80; // 40px * scale(2)
+  const padded = document.createElement('canvas');
+  padded.width = sourceCanvas.width + pad * 2;
+  padded.height = sourceCanvas.height + pad * 2;
+
+  const ctx = padded.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, padded.width, padded.height);
+  ctx.drawImage(sourceCanvas, pad, pad);
+
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = padded.toDataURL('image/png');
+  link.click();
 }
