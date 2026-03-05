@@ -10,6 +10,10 @@ const CONCEPTS = {
   batch: [
     'batch', 'section', 'group', 'class', 'programme', 'program',
     'dept', 'department', 'roll', 'semester group', 'sem group',
+    'batch sec', 'batch-sec', 'batch/sec', 'class sec', 'class-sec', 'class/sec',
+  ],
+  section: [
+    'section', 'sec',
   ],
   date: [
     'exam date', 'examination date', 'schedule date', 'test date', 'date',
@@ -24,6 +28,7 @@ const CONCEPTS = {
   course: [
     'course name', 'subject name', 'paper name', 'course title', 'subject title',
     'paper title', 'module name', 'course', 'subject', 'paper', 'module', 'title',
+    'code subjects', 'code/subjects', 'subjects',
   ],
   // Explicitly recognised but IGNORED in output
   _skip: [
@@ -44,7 +49,12 @@ const MONTH_NAMES = {
   july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
 };
 
-const MAX_SCAN = 30; // max rows to scan for a header row
+const DAY_SHORT = {
+  mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+  fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
+};
+
+const MAX_SCAN = 50; // max rows to scan for a header row
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -54,44 +64,7 @@ export function parseFile(file) {
 
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target.result);
-        // cellDates:true → XLSX converts Excel date serials to JS Date objects
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-
-        if (!workbook.SheetNames.length) {
-          reject(new Error('The file contains no sheets.'));
-          return;
-        }
-
-        // Try every sheet; keep the one that yields the most data rows.
-        let bestResult = null;
-        const sheetErrors = [];
-
-        for (const sheetName of workbook.SheetNames) {
-          try {
-            const result = parseSheet(workbook.Sheets[sheetName]);
-            if (!bestResult || result.rows.length > bestResult.rows.length) {
-              bestResult = result;
-            }
-          } catch (err) {
-            sheetErrors.push(`  • ${sheetName}: ${err.message}`);
-          }
-        }
-
-        if (!bestResult || bestResult.rows.length === 0) {
-          const detail = sheetErrors.length
-            ? `\n\nSheet details:\n${sheetErrors.join('\n')}`
-            : '';
-          reject(new Error(
-            'No exam data could be extracted from this file.' +
-            '\nExpected columns (any order, any reasonable name): ' +
-            'Batch/Section, Date, Slot/Time, Course/Subject.' +
-            detail
-          ));
-          return;
-        }
-
-        resolve(bestResult);
+        resolve(parseArrayBuffer(e.target.result));
       } catch (err) {
         reject(new Error(`Could not read file: ${err.message}`));
       }
@@ -101,6 +74,48 @@ export function parseFile(file) {
       reject(new Error('Failed to read the file. Is it corrupted or still open in Excel?'));
     reader.readAsArrayBuffer(file);
   });
+}
+
+export function parseArrayBuffer(arrayBuffer) {
+  const data = new Uint8Array(arrayBuffer);
+  // cellDates:true -> XLSX converts Excel date serials to JS Date objects
+  const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+  return parseWorkbook(workbook);
+}
+
+export function parseWorkbook(workbook) {
+  if (!workbook.SheetNames.length) {
+    throw new Error('The file contains no sheets.');
+  }
+
+  // Try every sheet; keep the one that yields the most data rows.
+  let bestResult = null;
+  const sheetErrors = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    try {
+      const result = parseSheet(workbook.Sheets[sheetName]);
+      if (!bestResult || result.rows.length > bestResult.rows.length) {
+        bestResult = result;
+      }
+    } catch (err) {
+      sheetErrors.push(`  • ${sheetName}: ${err.message}`);
+    }
+  }
+
+  if (!bestResult || bestResult.rows.length === 0) {
+    const detail = sheetErrors.length
+      ? `\n\nSheet details:\n${sheetErrors.join('\n')}`
+      : '';
+    throw new Error(
+      'No exam data could be extracted from this file.' +
+      '\nExpected columns (any order, any reasonable name): ' +
+      'Batch/Section (optional), Date/Day, Slot/Time, Course/Subject.' +
+      detail
+    );
+  }
+
+  return bestResult;
 }
 
 // ─── Sheet parser ─────────────────────────────────────────────────────────────
@@ -117,15 +132,19 @@ function parseSheet(sheet) {
   const rows   = [];
   const batchSet  = new Set();
   const courseSet = new Set();
+  const carry = { batch: '', date: '', day: '', slot: '' };
+  const hasBatchColumn = colMap.batch !== -1;
 
   for (let i = headerIdx + 1; i < json.length; i++) {
     const r = json[i];
     if (!r || r.length === 0) continue;
 
-    const batch      = cellStr(r, colMap.batch);
-    const courseName = cellStr(r, colMap.course);
+    const rawBatch   = combineBatchSection(cellStr(r, colMap.batch), cellStr(r, colMap.section));
+    const rawCourse  = cellStr(r, colMap.course);
+    const courseList = splitCourseCell(rawCourse);
+    const courseName = courseList[0] || '';
 
-    if (!batch && !courseName) continue;
+    if (!rawBatch && !courseName) continue;
     if (looksLikeHeaderRow(r))  continue;
 
     // ── Resolve date + day ─────────────────────────────────────────────────
@@ -149,13 +168,32 @@ function parseSheet(sheet) {
 
     const slot = cellStr(r, colMap.slot);
 
-    const key = [batch, date, slot, courseName].join('\x00');
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const batch = rawBatch || (hasBatchColumn ? carry.batch : 'All Batches');
+    const resolvedDate = date || carry.date;
+    const resolvedDay  = day || carry.day || dayFromDateStr(resolvedDate);
+    const resolvedSlot = slot || carry.slot;
 
-    rows.push({ batch, date, day, slot, courseName });
-    if (batch)      batchSet.add(batch);
-    if (courseName) courseSet.add(courseName);
+    if (batch) carry.batch = batch;
+    if (resolvedDate) carry.date = resolvedDate;
+    if (resolvedDay) carry.day = resolvedDay;
+    if (resolvedSlot) carry.slot = resolvedSlot;
+
+    for (const name of courseList.length ? courseList : ['']) {
+      const key = [batch, resolvedDate, resolvedSlot, name].join('\x00');
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      rows.push({
+        batch,
+        date: resolvedDate,
+        day: resolvedDay,
+        slot: resolvedSlot,
+        courseName: name,
+      });
+
+      if (batch) batchSet.add(batch);
+      if (name)  courseSet.add(name);
+    }
   }
 
   if (rows.length === 0) {
@@ -172,7 +210,7 @@ function parseSheet(sheet) {
 // ─── Header detection (scoring) ──────────────────────────────────────────────
 //
 // Score each candidate row by how many distinct column concepts it signals.
-// The row with the highest score (must have batch + course at minimum) is the
+// The row with the highest score (must have a course column at minimum) is the
 // header. Scans up to MAX_SCAN rows so long institution title blocks are fine.
 //
 
@@ -186,19 +224,27 @@ function findHeader(json) {
   for (let i = 0; i < limit; i++) {
     const row = json[i];
     if (!Array.isArray(row) || row.length === 0) continue;
+    const nonEmpty = row.filter((c) => String(c ?? '').trim() !== '').length;
+    if (nonEmpty < 2) continue;
 
     const { score, colMap } = scoreRow(row);
-    if (score > bestScore) {
+    const hasCourse = colMap.course !== -1;
+    const bestHasCourse = bestMap ? bestMap.course !== -1 : false;
+
+    if (
+      (hasCourse && !bestHasCourse) ||
+      (hasCourse === bestHasCourse && score > bestScore)
+    ) {
       bestScore = score;
       bestIdx   = i;
       bestMap   = colMap;
     }
   }
 
-  if (bestScore < 2 || !bestMap || bestMap.batch === -1 || bestMap.course === -1) {
+  if (bestScore < 2 || !bestMap || bestMap.course === -1) {
     throw new Error(
       `Could not identify a header row (best score: ${bestScore}). ` +
-      `Ensure columns exist for: Batch/Section, Date/Day, Slot/Time, Course/Subject.`
+      `Ensure columns exist for: Course/Subject and at least one of Batch/Section, Date/Day, Slot/Time.`
     );
   }
 
@@ -208,19 +254,24 @@ function findHeader(json) {
 function scoreRow(row) {
   const cells = row.map(c => normHeader(String(c ?? '')));
 
-  const colMap = { batch: -1, date: -1, day: -1, combined: -1, slot: -1, course: -1 };
+  const colMap = { batch: -1, section: -1, date: -1, day: -1, combined: -1, slot: -1, course: -1 };
   const found  = new Set();
 
   for (let ci = 0; ci < cells.length; ci++) {
     const cell = cells[ci];
     if (!cell) continue;
 
-    // Skip columns we intentionally ignore (code, faculty, room…)
-    if (matchesConcept(cell, CONCEPTS._skip)) continue;
+    // Skip columns we intentionally ignore (faculty, room, plain code-only columns).
+    // Keep mixed headers like "Code/Subjects" available for course detection.
+    if (isIgnorableHeader(cell)) continue;
 
     // Batch
     if (colMap.batch === -1 && matchesConcept(cell, CONCEPTS.batch)) {
       colMap.batch = ci; found.add('batch'); continue;
+    }
+
+    if (colMap.section === -1 && matchesConcept(cell, CONCEPTS.section)) {
+      colMap.section = ci; continue;
     }
 
     // Course
@@ -265,8 +316,26 @@ function normHeader(s) {
 function matchesConcept(cellNorm, synonyms) {
   return synonyms.some(s => {
     const sn = normHeader(s);
-    return cellNorm === sn || cellNorm.includes(sn) || sn.includes(cellNorm);
+    return (
+      cellNorm === sn ||
+      cellNorm.includes(sn) ||
+      (cellNorm.length >= 5 && sn.includes(cellNorm))
+    );
   });
+}
+
+function matchesConceptStrict(cellNorm, synonyms) {
+  return synonyms.some(s => {
+    const sn = normHeader(s);
+    return cellNorm === sn || cellNorm.includes(sn);
+  });
+}
+
+function isIgnorableHeader(cellNorm) {
+  if (!matchesConceptStrict(cellNorm, CONCEPTS._skip)) return false;
+  // Keep combined headers like "Code/Subjects" as valid course columns.
+  if (/\bcode\b/.test(cellNorm) && /subject/.test(cellNorm)) return false;
+  return true;
 }
 
 // ─── Data-row helpers ─────────────────────────────────────────────────────────
@@ -286,6 +355,7 @@ function looksLikeHeaderRow(row) {
     if (matchesConcept(c, CONCEPTS.batch))  hits++;
     if (matchesConcept(c, CONCEPTS.course)) hits++;
     if (matchesConcept(c, CONCEPTS.slot))   hits++;
+    if (matchesConcept(c, CONCEPTS.date))   hits++;
   }
   return hits >= 2;
 }
@@ -363,6 +433,11 @@ function normalizeDate(raw) {
   }
 
   // Couldn't parse — return original (better than blank)
+  const parsed = new Date(s);
+  if (!isNaN(parsed)) {
+    return fmtDate(parsed.getUTCDate(), parsed.getUTCMonth() + 1, parsed.getUTCFullYear());
+  }
+
   return s;
 }
 
@@ -386,9 +461,11 @@ function dayFromDateStr(ddmmyyyy) {
 }
 
 function capitalizeDay(raw) {
-  const lc = String(raw ?? '').trim().toLowerCase();
+  const lc = String(raw ?? '').trim().toLowerCase().replace(/[^a-z]/g, ' ');
   const match = DAY_NAMES.find(d => lc.includes(d));
-  return match ? match.charAt(0).toUpperCase() + match.slice(1) : raw;
+  if (match) return match.charAt(0).toUpperCase() + match.slice(1);
+  const abbr = Object.keys(DAY_SHORT).find(d => lc.includes(d));
+  return abbr ? DAY_SHORT[abbr] : raw;
 }
 
 // ─── Split a combined "date + day-name" cell ──────────────────────────────────
@@ -407,6 +484,14 @@ function splitDateDay(raw) {
   for (const d of DAY_NAMES) {
     if (lc.includes(d)) { dayName = d.charAt(0).toUpperCase() + d.slice(1); break; }
   }
+  if (!dayName) {
+    for (const d of Object.keys(DAY_SHORT)) {
+      if (new RegExp(`\\b${d}\\b`, 'i').test(lc)) {
+        dayName = DAY_SHORT[d];
+        break;
+      }
+    }
+  }
 
   let dateFrag = s;
   if (dayName) {
@@ -420,6 +505,34 @@ function splitDateDay(raw) {
   const resolvedDay  = dayName || dayFromDateStr(date);
 
   return { date, day: resolvedDay };
+}
+
+function combineBatchSection(batchRaw, sectionRaw) {
+  const batch = String(batchRaw || '').trim();
+  const section = String(sectionRaw || '').trim();
+  if (!batch && !section) return '';
+  if (!section) return batch;
+  if (!batch) return section;
+  if (batch.toLowerCase().endsWith(section.toLowerCase())) return batch;
+  return `${batch}${section.length === 1 ? section : `-${section}`}`;
+}
+
+function splitCourseCell(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return [];
+  const lines = text
+    .split(/\r?\n|\s*\/\s*/)
+    .map((l) => cleanCourseName(l))
+    .filter(Boolean);
+  return lines.length ? lines : [cleanCourseName(text)].filter(Boolean);
+}
+
+function cleanCourseName(name) {
+  let s = String(name || '').trim();
+  if (!s) return '';
+  s = s.replace(/\[[^\]]*\]/g, '').trim();
+  s = s.replace(/^[A-Z]{2,6}\s*-?\s*\d{2,4}[A-Z]?\s*[-: ]\s*/i, '').trim();
+  return s.replace(/\s+/g, ' ');
 }
 
 // ─── Filtering helpers ────────────────────────────────────────────────────────
