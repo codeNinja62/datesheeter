@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useRef } from 'react';
 
 const BASE_CELL = {
   border: '1px solid #d1d5db',
@@ -47,14 +47,38 @@ const DatesheetTable = forwardRef(function DatesheetTable({
   title,
   theme,
   onCellChange,
-  onMoveRow,
+  onReorderRow,
   onRemoveRow,
-  onMoveColumn,
+  onReorderColumn,
   onRemoveColumn,
   onRenameColumn,
 }, ref) {
+  const dragColumnIdxRef = useRef(-1);
+  const dragRowIdxRef = useRef(-1);
   const safeColumns = columns || [];
   const safeTheme = theme || FALLBACK_THEME;
+
+  const beginColumnDrag = (index) => {
+    dragColumnIdxRef.current = index;
+  };
+
+  const dropColumn = (toIndex) => {
+    const fromIndex = dragColumnIdxRef.current;
+    dragColumnIdxRef.current = -1;
+    if (fromIndex < 0 || fromIndex === toIndex) return;
+    onReorderColumn(fromIndex, toIndex);
+  };
+
+  const beginRowDrag = (index) => {
+    dragRowIdxRef.current = index;
+  };
+
+  const dropRow = (toIndex) => {
+    const fromIndex = dragRowIdxRef.current;
+    dragRowIdxRef.current = -1;
+    if (fromIndex < 0 || fromIndex === toIndex) return;
+    onReorderRow(fromIndex, toIndex);
+  };
 
   if (!rows || rows.length === 0) {
     return (
@@ -97,6 +121,8 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                 {safeColumns.map((col, colIndex) => (
                   <th
                     key={col.id}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => dropColumn(colIndex)}
                     style={{
                       ...HEAD_CELL,
                       backgroundColor: safeTheme.headerBg,
@@ -114,17 +140,13 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                       <div className="no-export flex items-center justify-center gap-1.5">
                         <button
                           className={BUTTON_CLASS}
-                          onClick={() => onMoveColumn(colIndex, 'left')}
-                          disabled={colIndex === 0}
+                          draggable
+                          onDragStart={() => beginColumnDrag(colIndex)}
+                          onDragEnd={() => {
+                            dragColumnIdxRef.current = -1;
+                          }}
                         >
-                          left
-                        </button>
-                        <button
-                          className={BUTTON_CLASS}
-                          onClick={() => onMoveColumn(colIndex, 'right')}
-                          disabled={colIndex === safeColumns.length - 1}
-                        >
-                          right
+                          drag
                         </button>
                         <button
                           className={BUTTON_CLASS}
@@ -155,6 +177,8 @@ const DatesheetTable = forwardRef(function DatesheetTable({
               {rows.map((r, i) => (
                 <tr
                   key={i}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => dropRow(i)}
                   style={{ backgroundColor: i % 2 === 0 ? safeTheme.rowOdd : safeTheme.rowEven }}
                 >
                   {safeColumns.map((col) => {
@@ -184,17 +208,13 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         className={BUTTON_CLASS}
-                        onClick={() => onMoveRow(i, 'up')}
-                        disabled={i === 0}
+                        draggable
+                        onDragStart={() => beginRowDrag(i)}
+                        onDragEnd={() => {
+                          dragRowIdxRef.current = -1;
+                        }}
                       >
-                        up
-                      </button>
-                      <button
-                        className={BUTTON_CLASS}
-                        onClick={() => onMoveRow(i, 'down')}
-                        disabled={i === rows.length - 1}
-                      >
-                        down
+                        drag
                       </button>
                       <button
                         className={BUTTON_CLASS}

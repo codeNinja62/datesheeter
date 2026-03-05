@@ -155,9 +155,8 @@ export default function App() {
     )));
   }, []);
 
-  const handleRowMove = useCallback((rowIndex, direction) => {
-    const nextIndex = direction === 'up' ? rowIndex - 1 : rowIndex + 1;
-    setEditableRows((prev) => moveItem(prev, rowIndex, nextIndex));
+  const handleRowReorder = useCallback((fromIndex, toIndex) => {
+    setEditableRows((prev) => moveItem(prev, fromIndex, toIndex));
   }, []);
 
   const handleRowRemove = useCallback((rowIndex) => {
@@ -178,9 +177,8 @@ export default function App() {
     )));
   }, []);
 
-  const handleColumnMove = useCallback((columnIndex, direction) => {
-    const nextIndex = direction === 'left' ? columnIndex - 1 : columnIndex + 1;
-    setTableColumns((prev) => moveItem(prev, columnIndex, nextIndex));
+  const handleColumnReorder = useCallback((fromIndex, toIndex) => {
+    setTableColumns((prev) => moveItem(prev, fromIndex, toIndex));
   }, []);
 
   const handleColumnRemove = useCallback((columnId) => {
@@ -356,6 +354,9 @@ export default function App() {
                       </button>
                     </div>
                   </div>
+                  <p className="text-[10px] font-mono text-white/35 tracking-wide uppercase">
+                    drag handles in headers and row actions to reorder columns and rows
+                  </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                     {[
@@ -387,9 +388,9 @@ export default function App() {
                   ref={tableRef}
                   theme={tableTheme}
                   onCellChange={handleCellChange}
-                  onMoveRow={handleRowMove}
+                  onReorderRow={handleRowReorder}
                   onRemoveRow={handleRowRemove}
-                  onMoveColumn={handleColumnMove}
+                  onReorderColumn={handleColumnReorder}
                   onRemoveColumn={handleColumnRemove}
                   onRenameColumn={handleColumnRename}
                   title={
