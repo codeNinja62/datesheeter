@@ -21,14 +21,14 @@ const TIME_SLOT_RE = /^\d{3,4}\s*[-–]\s*\d{3,4}$|^\d{1,2}:\d{2}\s*[-–]\s*\d{
 //     title:          string
 //     days:           string[]                  — e.g. ['Monday','Tuesday',…]
 //     slots:          SlotEntry[]
-//     lunchAfterSlot: string | null             — time string after which lunch row appears
 //     legend:         object[]
 //   }
 //
 // SlotEntry:
 //   {
-//     time: string,
-//     rows: Array<{ [day]: string }>            — one entry per physical Excel row
+//     time:       string,
+//     lunchAfter: boolean,                      — render a Lunch Break row AFTER this slot
+//     rows:       Array<{ [day]: string }>       — one entry per physical Excel row
 //   }
 //
 // Each physical Excel row in a time-slot block becomes exactly one entry in
@@ -233,9 +233,8 @@ function parseSheet(sheet, sheetName) {
     // We detect a new slot when the time cell matches TIME_SLOT_RE and is
     // the origin cell (not in mergeNonOrigin).
     //
-    const slots       = [];   // [{ time, rows: [{day:string}] }]
-    let currentSlot   = null; // index into slots[]
-    let lunchAfterSlot = null;
+    const slots = [];      // [{ time, lunchAfter, rows: [{day:string}] }]
+    let currentSlot = null; // index into slots[]
 
     for (let r = headerRow + 1; r <= blockEnd; r++) {
       const row      = grid[r] || [];
@@ -245,34 +244,38 @@ function parseSheet(sheet, sheetName) {
       // Skip completely empty rows
       if (row.every((c) => !String(c ?? '').trim())) continue;
 
-      // Lunch / Break marker — only check the time column + day columns
-      // (NOT all columns, because far-right columns like "Friday's Timings
-      // (After Prayer Break)" propagate "prayer" into data rows via merges).
-      const lunchKeywords = ['lunch', 'prayer', 'namaz', 'ramzan', 'break'];
-      const hasLunchInTime = lunchKeywords.some((k) => timeLc.includes(k));
+      // ── Lunch / Break detection ──────────────────────────────────────────
+      // Time-column keywords: broad — any kind of break row.
+      const LUNCH_KW_TIME = ['lunch', 'prayer', 'namaz', 'ramzan', 'break'];
+      // Day-column keywords: narrow — only text that unambiguously means a break
+      // (avoids false-positives from course names that happen to contain "break").
+      const LUNCH_KW_DAYS = ['lunch', 'prayer', 'namaz', 'ramzan'];
+      const hasLunchInTime = LUNCH_KW_TIME.some((k) => timeLc.includes(k));
+      // Read propagated (grid) value regardless of merge-origin status, so we
+      // catch horizontal merges that start at the time column or any earlier column.
       const hasLunchInDays = dayColumns.some(({ colIdx: ci }) => {
-        if (mergeNonOrigin.has(`${r},${ci}`)) return false;
-        const lc = String(row[ci] ?? '').toLowerCase();
-        return lc.includes('lunch') || lc.includes('prayer break');
+        const lc = String(grid[r][ci] ?? '').toLowerCase();
+        return LUNCH_KW_DAYS.some((k) => lc.includes(k));
       });
+
       if (hasLunchInTime || hasLunchInDays) {
-        // Roll back the current slot if it has no rows yet.
-        // This happens when the time-cell origin row (e.g. "1300-1350") and the
-        // lunch-text row ("Lunch + Prayer Break") are two separate physical rows
-        // within the same merged block.  We pushed the empty slot on the first
-        // row, so we need to undo that before recording lunchAfterSlot —
-        // otherwise lunchAfterSlot points to a slot that will be filtered out.
+        // If the current slot is empty (we just opened it with the time cell in
+        // this same row before reaching the lunch check), undo it — otherwise
+        // lunchAfter would point at a slot that gets filtered out later.
         if (currentSlot !== null && slots[currentSlot].rows.length === 0) {
           slots.pop();
           currentSlot = slots.length > 0 ? slots.length - 1 : null;
         }
-        lunchAfterSlot = currentSlot !== null ? slots[currentSlot].time : null;
+        // Mark the slot OBJECT directly — no string comparison needed at render time.
+        if (currentSlot !== null) {
+          slots[currentSlot].lunchAfter = true;
+        }
         continue;
       }
 
       // New time slot starts when the origin cell matches the time pattern
       if (TIME_SLOT_RE.test(timeCell) && !mergeNonOrigin.has(`${r},${timeColIdx}`)) {
-        slots.push({ time: timeCell, rows: [] });
+        slots.push({ time: timeCell, lunchAfter: false, rows: [] });
         currentSlot = slots.length - 1;
       }
 
@@ -306,7 +309,6 @@ function parseSheet(sheet, sheetName) {
       title,
       days: dayColumns.map((d) => d.day),
       slots: validSlots,
-      lunchAfterSlot,
       legend: sharedLegend,
     });
   }

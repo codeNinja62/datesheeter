@@ -84,9 +84,11 @@ const LUNCH_CELL = {
 const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
   if (!timetable) return null;
 
-  const { title, days, slots, lunchAfterSlot } = timetable;
+  const { title, days, slots } = timetable;
   const colCount = days.length + 1;
 
+  // Flatten slots into per-physical-row descriptors.
+  // lunchAfter is now a boolean flag ON the slot itself — no string comparison.
   const tableRows = [];
   for (const slot of slots) {
     const rowCount = slot.rows.length;
@@ -96,7 +98,7 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
         time:         slot.time,
         rowspan:      rowCount,
         rowDict,
-        isLunchAfter: ri === rowCount - 1 && lunchAfterSlot === slot.time,
+        isLunchAfter: ri === rowCount - 1 && slot.lunchAfter === true,
         rowIndex:     tableRows.length,
       });
     });
