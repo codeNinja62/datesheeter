@@ -26,6 +26,56 @@ const DEFAULT_THEME = {
   border: '#0f172a',
 };
 
+const THEME_PRESETS = [
+  {
+    id: 'classic',
+    label: 'Classic',
+    theme: DEFAULT_THEME,
+  },
+  {
+    id: 'emerald',
+    label: 'Emerald',
+    theme: {
+      headerBg: '#052e16',
+      headerText: '#ecfdf5',
+      bodyText: '#052e16',
+      rowOdd: '#f0fdf4',
+      rowEven: '#dcfce7',
+      accentBg: '#86efac',
+      accentText: '#052e16',
+      border: '#166534',
+    },
+  },
+  {
+    id: 'ocean',
+    label: 'Ocean',
+    theme: {
+      headerBg: '#0c4a6e',
+      headerText: '#f0f9ff',
+      bodyText: '#082f49',
+      rowOdd: '#f0f9ff',
+      rowEven: '#e0f2fe',
+      accentBg: '#7dd3fc',
+      accentText: '#082f49',
+      border: '#0369a1',
+    },
+  },
+  {
+    id: 'sunset',
+    label: 'Sunset',
+    theme: {
+      headerBg: '#7c2d12',
+      headerText: '#fff7ed',
+      bodyText: '#431407',
+      rowOdd: '#fff7ed',
+      rowEven: '#ffedd5',
+      accentBg: '#fdba74',
+      accentText: '#431407',
+      border: '#9a3412',
+    },
+  },
+];
+
 function createEditableRows(sourceRows, columns) {
   const columnIds = columns.map((c) => c.id);
   return sourceRows.map((row) => {
@@ -212,7 +262,21 @@ export default function App() {
 
   const handleThemeChange = useCallback((key, value) => {
     setTableTheme((prev) => ({ ...prev, [key]: value }));
+    setTableStatus('Theme updated.');
   }, []);
+
+  const handlePresetTheme = useCallback((preset) => {
+    setTableTheme(preset.theme);
+    setTableStatus(`${preset.label} palette applied.`);
+  }, []);
+
+  const handleResetCustomization = useCallback(() => {
+    setTableColumns(DEFAULT_COLUMNS);
+    setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
+    setTableTheme(DEFAULT_THEME);
+    customColCountRef.current = 1;
+    setTableStatus('Table customization reset to default.');
+  }, [displayRows]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -361,6 +425,28 @@ export default function App() {
                       >
                         add row
                       </button>
+                      <button
+                        onClick={handleResetCustomization}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-widest bg-rose-500/15 text-rose-200 hover:bg-rose-500/20 transition-colors"
+                      >
+                        reset custom
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-mono text-white/40 tracking-[0.18em] uppercase">
+                      quick palettes
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {THEME_PRESETS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          onClick={() => handlePresetTheme(preset)}
+                          className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <p className="text-[10px] font-mono text-white/35 tracking-wide uppercase">
@@ -370,7 +456,11 @@ export default function App() {
                     {tableStatus || 'Tip: drag to reorder, or use left/right and up/down for keyboard and touch.'}
                   </p>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-mono text-white/40 tracking-[0.18em] uppercase">
+                      color system
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                     {[
                       ['headerBg', 'Header BG'],
                       ['headerText', 'Header Text'],
@@ -392,6 +482,7 @@ export default function App() {
                         {label}
                       </label>
                     ))}
+                    </div>
                   </div>
                 </div>
                 <DatesheetTable

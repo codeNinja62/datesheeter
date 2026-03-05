@@ -29,7 +29,7 @@ const HEAD_CELL = {
   padding: '13px 28px',
 };
 
-const BUTTON_CLASS = 'no-export px-2 py-1 text-[10px] font-mono font-bold rounded border border-black/20 hover:bg-black/5 transition-colors';
+const BUTTON_CLASS = 'no-export px-2.5 py-1.5 text-[10px] font-mono font-bold rounded border border-black/20 hover:bg-black/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
 const FALLBACK_THEME = {
   headerBg: '#0f172a',
   headerText: '#ffffff',
@@ -120,6 +120,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
         {/* Table with outer border */}
         <div style={{ border: `2.5px solid ${safeTheme.border}`, display: 'inline-block', borderRadius: '2px', overflow: 'hidden' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <caption className="sr-only">Editable datesheet table with drag and drop row and column ordering.</caption>
             <thead>
               <tr>
                 {safeColumns.map((col, colIndex) => (
