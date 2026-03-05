@@ -227,49 +227,53 @@ function parseSheet(sheet, sheetName) {
 
     // --- Walk rows and build slot→rows structure -----------------------------
     //
-    // PHASE 1: Parse all rows into slots, with only a minimal inline guard
-    // (skip rows where the time cell itself contains break text so it doesn't
-    // contaminate a neighbouring slot).
+    // Banner rows (e.g. "LUNCH BREAK") are detected STRUCTURALLY:
+    //   • The time column does not contain a valid time pattern.
+    //   • Every day column resolves to the same non-empty string
+    //     (Excel horizontal merge propagates the origin value to all cells).
+    // No keyword matching — works for any label, in any language.
     //
-    // PHASE 2: Post-process — detect "break slots" (all non-empty day cells
-    // contain break keywords) and convert them to a `lunchAfter` flag on the
-    // preceding slot.  This is fully general-purpose: no hardcoded positions,
-    // no fragile per-row state tracking.
+    // Slots array contains two entry shapes:
+    //   { type: 'slot',   time, rows: [{ [day]: string }] }
+    //   { type: 'banner', text }
     //
 
-    const BREAK_KW = ['lunch', 'prayer', 'namaz', 'ramzan'];
-
-    const slots = [];      // [{ time, lunchAfter, rows: [{day:string}] }]
+    const slots = [];       // SlotEntry[]
     let currentSlot = null; // index into slots[]
 
-    // ── Phase 1 ─────────────────────────────────────────────────────────────
     for (let r = headerRow + 1; r <= blockEnd; r++) {
       const row      = grid[r] || [];
       const timeCell = String(row[timeColIdx] ?? '').trim();
-      const timeLc   = timeCell.toLowerCase();
 
       // Skip completely empty rows
       if (row.every((c) => !String(c ?? '').trim())) continue;
 
-      // Inline guard: if the time cell itself is break text (horizontal merge
-      // covers the time column), skip the row — it would otherwise be absorbed
-      // into the preceding slot since it doesn't match TIME_SLOT_RE.
-      if (!TIME_SLOT_RE.test(timeCell) && BREAK_KW.some((k) => timeLc.includes(k))) {
+      if (!TIME_SLOT_RE.test(timeCell)) {
+        // Row has no valid time — check if it's a full-width banner.
+        // A banner has all day-column cells set to the same non-empty string
+        // (horizontal merge makes all cells carry the same value).
+        const dayVals = dayColumns
+          .map(({ colIdx }) => String(row[colIdx] ?? '').trim())
+          .filter(Boolean);
+        const unique = [...new Set(dayVals)];
+        if (unique.length === 1 && dayVals.length >= Math.ceil(dayColumns.length * 0.8)) {
+          // All day cells share one value → full-width banner
+          if (slots.length > 0) slots.push({ type: 'banner', text: unique[0] });
+        }
+        // Either way, this row is not a data row — skip slot processing
         continue;
       }
 
-      // New time slot starts when the origin cell matches the time pattern
-      if (TIME_SLOT_RE.test(timeCell) && !mergeNonOrigin.has(`${r},${timeColIdx}`)) {
-        slots.push({ time: timeCell, lunchAfter: false, rows: [] });
+      // New time slot: origin cell matches the time pattern
+      if (!mergeNonOrigin.has(`${r},${timeColIdx}`)) {
+        slots.push({ type: 'slot', time: timeCell, rows: [] });
         currentSlot = slots.length - 1;
       }
 
       if (currentSlot === null) continue;  // rows before any slot — skip
 
       // Build a row dict for this physical row across all day columns.
-      // Only read a day cell if it is NOT a non-origin merged cell — otherwise
-      // we'd be copying the same text from a vertically-merged course cell into
-      // multiple rows, making duplicates.
+      // Skip non-origin cells to avoid duplicating vertically-merged text.
       const rowDict = {};
       let hasContent = false;
       for (const { day, colIdx } of dayColumns) {
@@ -286,36 +290,8 @@ function parseSheet(sheet, sheetName) {
       }
     }
 
-    // ── Phase 2: detect break slots ─────────────────────────────────────────
-    // A slot is a "break slot" if every non-empty day cell across ALL its rows
-    // contains break-related text, and at least one cell does.
-    for (let i = 0; i < slots.length; i++) {
-      const slot = slots[i];
-      let hasBreakText      = false;
-      let hasNonBreakContent = false;
-
-      for (const row of slot.rows) {
-        for (const { day } of dayColumns) {
-          const v = (row[day] ?? '').trim();
-          // Treat empty or dash-only cells as blank (Excel often fills with —/--/-)
-          if (!v || /^[-–—]+$/.test(v)) continue;
-          if (BREAK_KW.some((k) => v.toLowerCase().includes(k))) {
-            hasBreakText = true;
-          } else {
-            hasNonBreakContent = true;
-          }
-        }
-      }
-
-      if (hasBreakText && !hasNonBreakContent) {
-        // This is a break slot — mark the preceding slot and empty this one.
-        if (i > 0) slots[i - 1].lunchAfter = true;
-        slot.rows = [];
-      }
-    }
-
-    // Drop slots with no rows
-    const validSlots = slots.filter((s) => s.rows.length > 0);
+    // Drop slot entries with no rows (banners are kept as-is)
+    const validSlots = slots.filter((s) => s.type === 'banner' || s.rows.length > 0);
     if (!validSlots.length) continue;
 
     sections.push({

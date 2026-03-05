@@ -88,18 +88,22 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
   const colCount = days.length + 1;
 
   // Flatten slots into per-physical-row descriptors.
-  // lunchAfter is now a boolean flag ON the slot itself — no string comparison.
+  // Banners ({ type:'banner', text }) become their own row type.
   const tableRows = [];
   for (const slot of slots) {
+    if (slot.type === 'banner') {
+      tableRows.push({ type: 'banner', text: slot.text });
+      continue;
+    }
     const rowCount = slot.rows.length;
     slot.rows.forEach((rowDict, ri) => {
       tableRows.push({
-        isFirst:      ri === 0,
-        time:         slot.time,
-        rowspan:      rowCount,
+        type:    'slot',
+        isFirst: ri === 0,
+        time:    slot.time,
+        rowspan: rowCount,
         rowDict,
-        isLunchAfter: ri === rowCount - 1 && slot.lunchAfter === true,
-        rowIndex:     tableRows.length,
+        rowIndex: tableRows.length,
       });
     });
   }
@@ -132,8 +136,15 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
           </thead>
 
           <tbody>
-            {tableRows.map((tr, idx) => (
-              <>
+            {tableRows.map((tr, idx) => {
+              if (tr.type === 'banner') {
+                return (
+                  <tr key={`banner-${idx}`}>
+                    <td colSpan={colCount} style={LUNCH_CELL}>{tr.text}</td>
+                  </tr>
+                );
+              }
+              return (
                 <tr
                   key={`row-${idx}`}
                   style={{ backgroundColor: tr.rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' }}
@@ -159,16 +170,8 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
                     );
                   })}
                 </tr>
-
-                {tr.isLunchAfter && (
-                  <tr key={`lunch-${idx}`}>
-                    <td colSpan={colCount} style={LUNCH_CELL}>
-                      Lunch Break
-                    </td>
-                  </tr>
-                )}
-              </>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
