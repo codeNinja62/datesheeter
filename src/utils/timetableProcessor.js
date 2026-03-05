@@ -297,7 +297,8 @@ function parseSheet(sheet, sheetName) {
       for (const row of slot.rows) {
         for (const { day } of dayColumns) {
           const v = (row[day] ?? '').trim();
-          if (!v) continue;
+          // Treat empty or dash-only cells as blank (Excel often fills with —/--/-)
+          if (!v || /^[-–—]+$/.test(v)) continue;
           if (BREAK_KW.some((k) => v.toLowerCase().includes(k))) {
             hasBreakText = true;
           } else {
