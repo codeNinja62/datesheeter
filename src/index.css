@@ -95,11 +95,13 @@ body {
   appearance: none !important;
 }
 
-.drag-handle {
+.table-header-drag,
+.table-row-drag {
   cursor: grab;
 }
 
-.drag-handle:active {
+.table-header-drag:active,
+.table-row-drag:active {
   cursor: grabbing;
 }
 
@@ -121,9 +123,23 @@ body {
   border-radius: 4px;
 }
 
-.drag-handle:focus-visible {
+.table-insert-chip {
+  border-radius: 9999px;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.table-insert-chip:hover,
+.table-insert-chip:focus-visible {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.6);
 }
 
 /* Cursor-tracking spotlight */

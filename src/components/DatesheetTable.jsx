@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useState } from 'react';
+import { Fragment, forwardRef, useRef, useState } from 'react';
 
 const BASE_CELL = {
   border: '1px solid #d1d5db',
@@ -29,7 +29,6 @@ const HEAD_CELL = {
   padding: '13px 28px',
 };
 
-const BUTTON_CLASS = 'no-export text-[10px] font-mono font-bold rounded border border-black/20 hover:bg-black/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
 const FALLBACK_THEME = {
   headerBg: '#0f172a',
   headerText: '#ffffff',
@@ -48,15 +47,18 @@ const DatesheetTable = forwardRef(function DatesheetTable({
   theme,
   onCellChange,
   onReorderRow,
-  onRemoveRow,
+  onInsertRowAfter,
   onReorderColumn,
-  onRemoveColumn,
+  onInsertColumnAfter,
   onRenameColumn,
 }, ref) {
   const dragColumnIdxRef = useRef(-1);
   const dragRowIdxRef = useRef(-1);
   const [columnDropTarget, setColumnDropTarget] = useState(-1);
   const [rowDropTarget, setRowDropTarget] = useState(-1);
+  const [selectedColumn, setSelectedColumn] = useState(-1);
+  const [selectedRow, setSelectedRow] = useState(-1);
+  const [editingColumnId, setEditingColumnId] = useState('');
   const safeColumns = columns || [];
   const safeTheme = theme || FALLBACK_THEME;
 
@@ -103,7 +105,6 @@ const DatesheetTable = forwardRef(function DatesheetTable({
           padding: '28px 32px 32px',
         }}
       >
-        {/* Title */}
         <p
           style={{
             textAlign: 'center',
@@ -117,7 +118,6 @@ const DatesheetTable = forwardRef(function DatesheetTable({
           {title || 'Datesheet'}
         </p>
 
-        {/* Table with outer border */}
         <div style={{ border: `2.5px solid ${safeTheme.border}`, display: 'inline-block', borderRadius: '2px', overflow: 'hidden' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <caption className="sr-only">Editable datesheet table with drag and drop row and column ordering.</caption>
@@ -126,13 +126,20 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                 {safeColumns.map((col, colIndex) => (
                   <th
                     key={col.id}
+                    draggable
+                    onDragStart={() => beginColumnDrag(colIndex)}
+                    onDragEnd={() => {
+                      dragColumnIdxRef.current = -1;
+                      setColumnDropTarget(-1);
+                    }}
                     onDragOver={(e) => {
                       e.preventDefault();
                       setColumnDropTarget(colIndex);
                     }}
                     onDragLeave={() => setColumnDropTarget(-1)}
                     onDrop={() => dropColumn(colIndex)}
-                    className={`relative group ${columnDropTarget === colIndex ? 'table-drop-target-col' : ''}`}
+                    onClick={() => setSelectedColumn(colIndex)}
+                    className={`relative select-none table-header-drag ${columnDropTarget === colIndex ? 'table-drop-target-col' : ''}`}
                     style={{
                       ...HEAD_CELL,
                       backgroundColor: safeTheme.headerBg,
@@ -140,116 +147,120 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                       border: `1px solid ${safeTheme.border}`,
                     }}
                   >
-                    <div className="flex flex-col gap-2 min-w-[130px]">
-                      <input
-                        value={col.label}
-                        onChange={(e) => onRenameColumn(col.id, e.target.value)}
-                        className="no-export w-full bg-white/95 text-slate-900 rounded px-2 py-1 text-[11px] font-mono font-bold"
-                        aria-label={`Rename ${col.label} column`}
-                      />
-                      <div className="no-export flex items-center justify-center">
-                        <button
-                          className={`${BUTTON_CLASS} drag-handle px-2.5 py-1 text-slate-700 bg-white/90`}
-                          draggable
-                          onDragStart={() => beginColumnDrag(colIndex)}
-                          onDragEnd={() => {
-                            dragColumnIdxRef.current = -1;
-                            setColumnDropTarget(-1);
+                    <div className="min-w-[130px]">
+                      {editingColumnId === col.id ? (
+                        <input
+                          value={col.label}
+                          onChange={(e) => onRenameColumn(col.id, e.target.value)}
+                          onBlur={() => setEditingColumnId('')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Escape') {
+                              setEditingColumnId('');
+                            }
                           }}
-                          aria-label={`Drag ${col.label} column to reorder`}
-                          title="Drag to reorder column"
+                          autoFocus
+                          className="no-export w-full bg-white/95 text-slate-900 rounded px-2 py-1 text-[11px] font-mono font-bold"
+                          aria-label={`Rename ${col.label} column`}
+                        />
+                      ) : (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedColumn(colIndex);
+                            setEditingColumnId(col.id);
+                          }}
+                          className="block px-2 py-1 rounded cursor-text"
+                          title="Tap to edit column name"
                         >
-                          grip
-                        </button>
-                      </div>
-                        <button
-                          className={`${BUTTON_CLASS} absolute right-1.5 top-1.5 h-6 w-6 opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 bg-white/95 text-slate-800`}
-                          onClick={() => onRemoveColumn(col.id)}
-                          disabled={safeColumns.length <= 1}
-                          aria-label={`Remove ${col.label} column`}
-                          title="Remove column"
-                        >
-                          x
-                        </button>
+                          {col.label || 'Untitled'}
+                        </span>
+                      )}
                     </div>
+                    {selectedColumn === colIndex && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onInsertColumnAfter(colIndex);
+                        }}
+                        className="no-export table-insert-chip absolute -right-3 -bottom-3 h-6 w-6"
+                        aria-label={`Add column after ${col.label}`}
+                        title="Add column"
+                      >
+                        +
+                      </button>
+                    )}
                   </th>
                 ))}
-                <th
-                  className="no-export"
-                  style={{
-                    ...HEAD_CELL,
-                    backgroundColor: safeTheme.headerBg,
-                    color: safeTheme.headerText,
-                    border: `1px solid ${safeTheme.border}`,
-                    minWidth: '110px',
-                  }}
-                >
-                  row actions
-                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr
-                  key={i}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setRowDropTarget(i);
-                  }}
-                  onDragLeave={() => setRowDropTarget(-1)}
-                  onDrop={() => dropRow(i)}
-                  className={rowDropTarget === i ? 'table-drop-target-row' : ''}
-                  style={{ backgroundColor: i % 2 === 0 ? safeTheme.rowOdd : safeTheme.rowEven }}
-                >
-                  {safeColumns.map((col) => {
-                    const isAccent = col.id === 'courseName';
-                    return (
-                      <td
-                        key={`${i}-${col.id}`}
-                        style={{
-                          ...BASE_CELL,
-                          ...(isAccent ? SUBJECT_SCREEN : null),
-                          color: isAccent ? safeTheme.accentText : safeTheme.bodyText,
-                          backgroundColor: isAccent ? safeTheme.accentBg : 'transparent',
-                          border: `1px solid ${isAccent ? safeTheme.accentBg : safeTheme.border}`,
-                        }}
-                      >
-                        <input
-                          value={r[col.id] ?? ''}
-                          onChange={(e) => onCellChange(i, col.id, e.target.value)}
-                          className="editable-cell-input w-full bg-transparent border-none outline-none text-center text-[0.92rem] font-semibold"
-                          style={{ color: isAccent ? safeTheme.accentText : safeTheme.bodyText }}
-                          aria-label={`${col.label} row ${i + 1}`}
-                        />
+                <Fragment key={i}>
+                  <tr
+                    draggable
+                    onDragStart={(e) => {
+                      const tag = e.target?.tagName?.toLowerCase();
+                      if (tag === 'input' || tag === 'button') {
+                        e.preventDefault();
+                        return;
+                      }
+                      beginRowDrag(i);
+                    }}
+                    onDragEnd={() => {
+                      dragRowIdxRef.current = -1;
+                      setRowDropTarget(-1);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setRowDropTarget(i);
+                    }}
+                    onDragLeave={() => setRowDropTarget(-1)}
+                    onDrop={() => dropRow(i)}
+                    onClick={() => setSelectedRow(i)}
+                    className={`table-row-drag ${rowDropTarget === i ? 'table-drop-target-row' : ''}`}
+                    style={{ backgroundColor: i % 2 === 0 ? safeTheme.rowOdd : safeTheme.rowEven }}
+                  >
+                    {safeColumns.map((col) => {
+                      const isAccent = col.id === 'courseName';
+                      return (
+                        <td
+                          key={`${i}-${col.id}`}
+                          style={{
+                            ...BASE_CELL,
+                            ...(isAccent ? SUBJECT_SCREEN : null),
+                            color: isAccent ? safeTheme.accentText : safeTheme.bodyText,
+                            backgroundColor: isAccent ? safeTheme.accentBg : 'transparent',
+                            border: `1px solid ${isAccent ? safeTheme.accentBg : safeTheme.border}`,
+                          }}
+                        >
+                          <input
+                            value={r[col.id] ?? ''}
+                            onChange={(e) => onCellChange(i, col.id, e.target.value)}
+                            className="editable-cell-input w-full bg-transparent border-none outline-none text-center text-[0.92rem] font-semibold"
+                            style={{ color: isAccent ? safeTheme.accentText : safeTheme.bodyText }}
+                            aria-label={`${col.label} row ${i + 1}`}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {selectedRow === i && (
+                    <tr className="no-export">
+                      <td colSpan={safeColumns.length} style={{ padding: '4px 0', border: 'none' }}>
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => onInsertRowAfter(i)}
+                            className="table-insert-chip h-6 w-6"
+                            aria-label={`Add row after ${i + 1}`}
+                            title="Add row"
+                          >
+                            +
+                          </button>
+                        </div>
                       </td>
-                    );
-                  })}
-                  <td className="no-export" style={{ ...BASE_CELL, border: `1px solid ${safeTheme.border}` }}>
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        className={`${BUTTON_CLASS} drag-handle px-2.5 py-1 text-slate-700 bg-white/90`}
-                        draggable
-                        onDragStart={() => beginRowDrag(i)}
-                        onDragEnd={() => {
-                          dragRowIdxRef.current = -1;
-                          setRowDropTarget(-1);
-                        }}
-                        aria-label={`Drag row ${i + 1} to reorder`}
-                        title="Drag to reorder row"
-                      >
-                        grip
-                      </button>
-                      <button
-                        className={`${BUTTON_CLASS} h-6 w-6 bg-white/95 text-slate-800`}
-                        onClick={() => onRemoveRow(i)}
-                        aria-label={`Remove row ${i + 1}`}
-                        title="Remove row"
-                      >
-                        x
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

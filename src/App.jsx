@@ -26,56 +26,6 @@ const DEFAULT_THEME = {
   border: '#0f172a',
 };
 
-const THEME_PRESETS = [
-  {
-    id: 'classic',
-    label: 'Classic',
-    theme: DEFAULT_THEME,
-  },
-  {
-    id: 'emerald',
-    label: 'Emerald',
-    theme: {
-      headerBg: '#052e16',
-      headerText: '#ecfdf5',
-      bodyText: '#052e16',
-      rowOdd: '#f0fdf4',
-      rowEven: '#dcfce7',
-      accentBg: '#86efac',
-      accentText: '#052e16',
-      border: '#166534',
-    },
-  },
-  {
-    id: 'ocean',
-    label: 'Ocean',
-    theme: {
-      headerBg: '#0c4a6e',
-      headerText: '#f0f9ff',
-      bodyText: '#082f49',
-      rowOdd: '#f0f9ff',
-      rowEven: '#e0f2fe',
-      accentBg: '#7dd3fc',
-      accentText: '#082f49',
-      border: '#0369a1',
-    },
-  },
-  {
-    id: 'sunset',
-    label: 'Sunset',
-    theme: {
-      headerBg: '#7c2d12',
-      headerText: '#fff7ed',
-      bodyText: '#431407',
-      rowOdd: '#fff7ed',
-      rowEven: '#ffedd5',
-      accentBg: '#fdba74',
-      accentText: '#431407',
-      border: '#9a3412',
-    },
-  },
-];
-
 function createEditableRows(sourceRows, columns) {
   const columnIds = columns.map((c) => c.id);
   return sourceRows.map((row) => {
@@ -112,7 +62,6 @@ export default function App() {
   const [editableRows, setEditableRows]     = useState([]);
   const [tableTheme, setTableTheme]         = useState(DEFAULT_THEME);
   const [tableStatus, setTableStatus]       = useState('');
-  const [activePresetId, setActivePresetId] = useState('classic');
   const confirmTimerRef = useRef(null);
   const customColCountRef = useRef(1);
   useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
@@ -146,7 +95,6 @@ export default function App() {
     setTableTheme(DEFAULT_THEME);
     setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
     setTableStatus('');
-    setActivePresetId('classic');
     customColCountRef.current = 1;
   }, [displayRows]);
 
@@ -191,7 +139,6 @@ export default function App() {
     setEditableRows([]);
     setTableTheme(DEFAULT_THEME);
     setTableStatus('');
-    setActivePresetId('classic');
     customColCountRef.current = 1;
   }, []);
 
@@ -216,18 +163,15 @@ export default function App() {
     setTableStatus(`Row ${fromIndex + 1} moved to position ${toIndex + 1}.`);
   }, []);
 
-  const handleRowRemove = useCallback((rowIndex) => {
-    setEditableRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
-    setTableStatus(`Row ${rowIndex + 1} removed.`);
-  }, []);
-
-  const handleRowAdd = useCallback(() => {
+  const handleRowInsertAfter = useCallback((rowIndex) => {
     setEditableRows((prev) => {
       const next = {};
       for (const col of tableColumns) next[col.id] = '';
-      return [...prev, next];
+      const clone = [...prev];
+      clone.splice(rowIndex + 1, 0, next);
+      return clone;
     });
-    setTableStatus('New row added.');
+    setTableStatus(`Row added after ${rowIndex + 1}.`);
   }, [tableColumns]);
 
   const handleColumnRename = useCallback((columnId, label) => {
@@ -241,45 +185,28 @@ export default function App() {
     setTableStatus(`Column ${fromIndex + 1} moved to position ${toIndex + 1}.`);
   }, []);
 
-  const handleColumnRemove = useCallback((columnId) => {
-    setTableColumns((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((col) => col.id !== columnId);
-    });
-    setEditableRows((prev) => prev.map((row) => {
-      const next = { ...row };
-      delete next[columnId];
-      return next;
-    }));
-    setTableStatus('Column removed.');
-  }, []);
-
-  const handleColumnAdd = useCallback(() => {
+  const handleColumnInsertAfter = useCallback((columnIndex) => {
     const newId = `custom_${customColCountRef.current}`;
     const newLabel = `Custom ${customColCountRef.current}`;
     customColCountRef.current += 1;
-    setTableColumns((prev) => [...prev, { id: newId, label: newLabel }]);
+    setTableColumns((prev) => {
+      const clone = [...prev];
+      clone.splice(columnIndex + 1, 0, { id: newId, label: newLabel });
+      return clone;
+    });
     setEditableRows((prev) => prev.map((row) => ({ ...row, [newId]: '' })));
-    setTableStatus(`${newLabel} column added.`);
+    setTableStatus(`${newLabel} added.`);
   }, []);
 
   const handleThemeChange = useCallback((key, value) => {
     setTableTheme((prev) => ({ ...prev, [key]: value }));
-    setActivePresetId('custom');
     setTableStatus('Theme updated.');
-  }, []);
-
-  const handlePresetTheme = useCallback((preset) => {
-    setTableTheme(preset.theme);
-    setActivePresetId(preset.id);
-    setTableStatus(`${preset.label} palette applied.`);
   }, []);
 
   const handleResetCustomization = useCallback(() => {
     setTableColumns(DEFAULT_COLUMNS);
     setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
     setTableTheme(DEFAULT_THEME);
-    setActivePresetId('classic');
     customColCountRef.current = 1;
     setTableStatus('Table customization reset to default.');
   }, [displayRows]);
@@ -418,38 +345,6 @@ export default function App() {
                     <p className="text-[11px] font-mono text-white/45 tracking-widest uppercase">
                       table editor
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleColumnAdd}
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
-                      >
-                        add column
-                      </button>
-                      <button
-                        onClick={handleRowAdd}
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
-                      >
-                        add row
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <label className="text-[10px] font-mono text-white/45 tracking-[0.18em] uppercase">
-                      palette
-                    </label>
-                    <select
-                      value={activePresetId}
-                      onChange={(e) => {
-                        const preset = THEME_PRESETS.find((p) => p.id === e.target.value);
-                        if (preset) handlePresetTheme(preset);
-                      }}
-                      className="glass-focus bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white/80"
-                    >
-                      {THEME_PRESETS.map((preset) => (
-                        <option key={preset.id} value={preset.id}>{preset.label}</option>
-                      ))}
-                      <option value="custom">Custom</option>
-                    </select>
                     <button
                       onClick={handleResetCustomization}
                       className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
@@ -458,10 +353,10 @@ export default function App() {
                     </button>
                   </div>
                   <p className="text-[10px] font-mono text-white/35 tracking-wide uppercase">
-                    drag handles in headers and row actions to reorder columns and rows
+                    drag rows or columns directly. tap a row or column to reveal a + insertion control.
                   </p>
                   <p className="text-[10px] font-mono text-amber-300/75 tracking-wide" aria-live="polite">
-                    {tableStatus || 'Tip: drag grip handles to reorder rows and columns.'}
+                    {tableStatus || 'Tip: tap a header label to edit it.'}
                   </p>
 
                   <details className="group">
@@ -504,9 +399,9 @@ export default function App() {
                   theme={tableTheme}
                   onCellChange={handleCellChange}
                   onReorderRow={handleRowReorder}
-                  onRemoveRow={handleRowRemove}
+                  onInsertRowAfter={handleRowInsertAfter}
                   onReorderColumn={handleColumnReorder}
-                  onRemoveColumn={handleColumnRemove}
+                  onInsertColumnAfter={handleColumnInsertAfter}
                   onRenameColumn={handleColumnRename}
                   title={
                     mode === 'batch' && selectedBatch
