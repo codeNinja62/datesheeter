@@ -227,16 +227,22 @@ function parseSheet(sheet, sheetName) {
 
     // --- Walk rows and build slot→rows structure -----------------------------
     //
-    // Each physical Excel row in a time-slot block becomes one entry in the
-    // slot's `rows` array.  The time cell is merged vertically so only the
-    // origin row has the time value; subsequent rows have it as a non-origin.
-    // We detect a new slot when the time cell matches TIME_SLOT_RE and is
-    // the origin cell (not in mergeNonOrigin).
+    // PHASE 1: Parse all rows into slots, with only a minimal inline guard
+    // (skip rows where the time cell itself contains break text so it doesn't
+    // contaminate a neighbouring slot).
     //
+    // PHASE 2: Post-process — detect "break slots" (all non-empty day cells
+    // contain break keywords) and convert them to a `lunchAfter` flag on the
+    // preceding slot.  This is fully general-purpose: no hardcoded positions,
+    // no fragile per-row state tracking.
+    //
+
+    const BREAK_KW = ['lunch', 'prayer', 'namaz', 'ramzan'];
+
     const slots = [];      // [{ time, lunchAfter, rows: [{day:string}] }]
     let currentSlot = null; // index into slots[]
-    let inLunchZone = false; // true while we are still inside a lunch-break block
 
+    // ── Phase 1 ─────────────────────────────────────────────────────────────
     for (let r = headerRow + 1; r <= blockEnd; r++) {
       const row      = grid[r] || [];
       const timeCell = String(row[timeColIdx] ?? '').trim();
@@ -245,35 +251,10 @@ function parseSheet(sheet, sheetName) {
       // Skip completely empty rows
       if (row.every((c) => !String(c ?? '').trim())) continue;
 
-      // ── Lunch / Break detection ──────────────────────────────────────────
-      // Time-column keywords: broad — any kind of break row.
-      const LUNCH_KW_TIME = ['lunch', 'prayer', 'namaz', 'ramzan', 'break'];
-      // Day-column keywords: narrow — only text that unambiguously means a break.
-      const LUNCH_KW_DAYS = ['lunch', 'prayer', 'namaz', 'ramzan'];
-      const hasLunchInTime = LUNCH_KW_TIME.some((k) => timeLc.includes(k));
-      // Read propagated (grid) value regardless of merge-origin status, so we
-      // catch horizontal merges that start at the time column or any earlier column.
-      const hasLunchInDays = dayColumns.some(({ colIdx: ci }) => {
-        const lc = String(grid[r][ci] ?? '').toLowerCase();
-        return LUNCH_KW_DAYS.some((k) => lc.includes(k));
-      });
-
-      if (hasLunchInTime || hasLunchInDays) {
-        if (!inLunchZone) {
-          // First row of this lunch block — record which slot precedes it.
-          inLunchZone = true;
-          // If the current slot is empty (time-cell origin row was processed
-          // before we reached the lunch text row), undo it.
-          if (currentSlot !== null && slots[currentSlot].rows.length === 0) {
-            slots.pop();
-            currentSlot = slots.length > 0 ? slots.length - 1 : null;
-          }
-          // Mark the slot object directly — no fragile string comparison.
-          if (currentSlot !== null) {
-            slots[currentSlot].lunchAfter = true;
-          }
-        }
-        // Whether first or subsequent row of the lunch block, always skip.
+      // Inline guard: if the time cell itself is break text (horizontal merge
+      // covers the time column), skip the row — it would otherwise be absorbed
+      // into the preceding slot since it doesn't match TIME_SLOT_RE.
+      if (!TIME_SLOT_RE.test(timeCell) && BREAK_KW.some((k) => timeLc.includes(k))) {
         continue;
       }
 
@@ -281,7 +262,6 @@ function parseSheet(sheet, sheetName) {
       if (TIME_SLOT_RE.test(timeCell) && !mergeNonOrigin.has(`${r},${timeColIdx}`)) {
         slots.push({ time: timeCell, lunchAfter: false, rows: [] });
         currentSlot = slots.length - 1;
-        inLunchZone = false; // we are past the lunch block now
       }
 
       if (currentSlot === null) continue;  // rows before any slot — skip
@@ -303,6 +283,33 @@ function parseSheet(sheet, sheetName) {
 
       if (hasContent) {
         slots[currentSlot].rows.push(rowDict);
+      }
+    }
+
+    // ── Phase 2: detect break slots ─────────────────────────────────────────
+    // A slot is a "break slot" if every non-empty day cell across ALL its rows
+    // contains break-related text, and at least one cell does.
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      let hasBreakText      = false;
+      let hasNonBreakContent = false;
+
+      for (const row of slot.rows) {
+        for (const { day } of dayColumns) {
+          const v = (row[day] ?? '').trim();
+          if (!v) continue;
+          if (BREAK_KW.some((k) => v.toLowerCase().includes(k))) {
+            hasBreakText = true;
+          } else {
+            hasNonBreakContent = true;
+          }
+        }
+      }
+
+      if (hasBreakText && !hasNonBreakContent) {
+        // This is a break slot — mark the preceding slot and empty this one.
+        if (i > 0) slots[i - 1].lunchAfter = true;
+        slot.rows = [];
       }
     }
 
