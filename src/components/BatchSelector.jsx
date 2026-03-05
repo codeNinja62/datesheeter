@@ -12,7 +12,7 @@ export default function BatchSelector({ batches, selectedBatch, onSelect, label 
             transition-all cursor-pointer appearance-none"
           style={{ colorScheme: 'dark' }}
         >
-          <option value="" style={{ background: '#0f0f23' }}>select batch</option>
+          <option value="" style={{ background: '#0f0f23' }}>select {label.toLowerCase()}</option>
           {batches.map((b) => (
             <option key={b} value={b} style={{ background: '#0f0f23' }}>{b}</option>
           ))}

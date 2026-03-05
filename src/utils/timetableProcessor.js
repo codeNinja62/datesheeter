@@ -256,6 +256,16 @@ function parseSheet(sheet, sheetName) {
         return lc.includes('lunch') || lc.includes('prayer break');
       });
       if (hasLunchInTime || hasLunchInDays) {
+        // Roll back the current slot if it has no rows yet.
+        // This happens when the time-cell origin row (e.g. "1300-1350") and the
+        // lunch-text row ("Lunch + Prayer Break") are two separate physical rows
+        // within the same merged block.  We pushed the empty slot on the first
+        // row, so we need to undo that before recording lunchAfterSlot —
+        // otherwise lunchAfterSlot points to a slot that will be filtered out.
+        if (currentSlot !== null && slots[currentSlot].rows.length === 0) {
+          slots.pop();
+          currentSlot = slots.length > 0 ? slots.length - 1 : null;
+        }
         lunchAfterSlot = currentSlot !== null ? slots[currentSlot].time : null;
         continue;
       }
