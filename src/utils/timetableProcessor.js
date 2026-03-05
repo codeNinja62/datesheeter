@@ -235,6 +235,7 @@ function parseSheet(sheet, sheetName) {
     //
     const slots = [];      // [{ time, lunchAfter, rows: [{day:string}] }]
     let currentSlot = null; // index into slots[]
+    let inLunchZone = false; // true while we are still inside a lunch-break block
 
     for (let r = headerRow + 1; r <= blockEnd; r++) {
       const row      = grid[r] || [];
@@ -247,8 +248,7 @@ function parseSheet(sheet, sheetName) {
       // ── Lunch / Break detection ──────────────────────────────────────────
       // Time-column keywords: broad — any kind of break row.
       const LUNCH_KW_TIME = ['lunch', 'prayer', 'namaz', 'ramzan', 'break'];
-      // Day-column keywords: narrow — only text that unambiguously means a break
-      // (avoids false-positives from course names that happen to contain "break").
+      // Day-column keywords: narrow — only text that unambiguously means a break.
       const LUNCH_KW_DAYS = ['lunch', 'prayer', 'namaz', 'ramzan'];
       const hasLunchInTime = LUNCH_KW_TIME.some((k) => timeLc.includes(k));
       // Read propagated (grid) value regardless of merge-origin status, so we
@@ -259,17 +259,21 @@ function parseSheet(sheet, sheetName) {
       });
 
       if (hasLunchInTime || hasLunchInDays) {
-        // If the current slot is empty (we just opened it with the time cell in
-        // this same row before reaching the lunch check), undo it — otherwise
-        // lunchAfter would point at a slot that gets filtered out later.
-        if (currentSlot !== null && slots[currentSlot].rows.length === 0) {
-          slots.pop();
-          currentSlot = slots.length > 0 ? slots.length - 1 : null;
+        if (!inLunchZone) {
+          // First row of this lunch block — record which slot precedes it.
+          inLunchZone = true;
+          // If the current slot is empty (time-cell origin row was processed
+          // before we reached the lunch text row), undo it.
+          if (currentSlot !== null && slots[currentSlot].rows.length === 0) {
+            slots.pop();
+            currentSlot = slots.length > 0 ? slots.length - 1 : null;
+          }
+          // Mark the slot object directly — no fragile string comparison.
+          if (currentSlot !== null) {
+            slots[currentSlot].lunchAfter = true;
+          }
         }
-        // Mark the slot OBJECT directly — no string comparison needed at render time.
-        if (currentSlot !== null) {
-          slots[currentSlot].lunchAfter = true;
-        }
+        // Whether first or subsequent row of the lunch block, always skip.
         continue;
       }
 
@@ -277,6 +281,7 @@ function parseSheet(sheet, sheetName) {
       if (TIME_SLOT_RE.test(timeCell) && !mergeNonOrigin.has(`${r},${timeColIdx}`)) {
         slots.push({ time: timeCell, lunchAfter: false, rows: [] });
         currentSlot = slots.length - 1;
+        inLunchZone = false; // we are past the lunch block now
       }
 
       if (currentSlot === null) continue;  // rows before any slot — skip
