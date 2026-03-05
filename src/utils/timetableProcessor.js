@@ -245,14 +245,17 @@ function parseSheet(sheet, sheetName) {
       // Skip completely empty rows
       if (row.every((c) => !String(c ?? '').trim())) continue;
 
-      // Lunch / Prayer Break / Ramzan marker — check time cell AND all cells in the row
-      const rowHasPrayerLunch = timeLc.includes('lunch') || timeLc.includes('prayer') ||
-        timeLc.includes('namaz') || timeLc.includes('ramzan') ||
-        row.some((c) => {
-          const lc = String(c ?? '').toLowerCase();
-          return lc.includes('prayer') || lc.includes('namaz') || lc.includes('ramzan') || lc.includes('lunch');
-        });
-      if (rowHasPrayerLunch) {
+      // Lunch / Break marker — only check the time column + day columns
+      // (NOT all columns, because far-right columns like "Friday's Timings
+      // (After Prayer Break)" propagate "prayer" into data rows via merges).
+      const lunchKeywords = ['lunch', 'prayer', 'namaz', 'ramzan', 'break'];
+      const hasLunchInTime = lunchKeywords.some((k) => timeLc.includes(k));
+      const hasLunchInDays = dayColumns.some(({ colIdx: ci }) => {
+        if (mergeNonOrigin.has(`${r},${ci}`)) return false;
+        const lc = String(row[ci] ?? '').toLowerCase();
+        return lc.includes('lunch') || lc.includes('prayer break');
+      });
+      if (hasLunchInTime || hasLunchInDays) {
         lunchAfterSlot = currentSlot !== null ? slots[currentSlot].time : null;
         continue;
       }
@@ -304,7 +307,13 @@ function parseSheet(sheet, sheetName) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function cleanCell(cell) {
-  if (cell.v === undefined && cell.h) return String(cell.h).replace(/<[^>]*>/g, '').trim();
+  if (cell.v === undefined && cell.h) {
+    // Convert <br> tags to newlines before stripping other HTML
+    return String(cell.h)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .trim();
+  }
   if (cell.v instanceof Date) return '';
   return String(cell.v ?? '').trim();
 }

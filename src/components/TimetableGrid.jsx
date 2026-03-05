@@ -1,9 +1,8 @@
 import { forwardRef } from 'react';
 
-// ─── Theme (matches datesheet: dark navy + amber) ─────────────────────────────
+// ─── Theme (matches datesheet: dark navy #0f172a + amber #fbbf24) ─────────────
 
 const NAVY   = '#0f172a';
-const AMBER  = '#fbbf24';
 const BORDER = '#d1d5db';
 
 const PALETTE = [
@@ -37,46 +36,47 @@ const BASE = {
   fontSize: '0.82rem',
   color: '#000000',
   padding: '8px 12px',
-  lineHeight: 1.35,
+  lineHeight: 1.4,
+  whiteSpace: 'pre-line',    // preserve \n as line breaks
+  wordBreak: 'break-word',
 };
 
 const HEADER_CELL = {
   ...BASE,
+  whiteSpace: 'nowrap',
   border: `1px solid ${NAVY}`,
   backgroundColor: NAVY,
   color: '#ffffff',
   fontWeight: '800',
-  fontSize: '0.8rem',
+  fontSize: '0.88rem',
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
-  padding: '13px 14px',
-  whiteSpace: 'nowrap',
+  padding: '13px 28px',
 };
 
 const TIME_CELL = {
   ...BASE,
+  whiteSpace: 'nowrap',
   border: `1px solid ${BORDER}`,
-  borderRight: `2px solid ${NAVY}`,
   backgroundColor: '#f8fafc',
   color: '#000000',
-  fontWeight: '700',
-  fontSize: '0.75rem',
-  whiteSpace: 'nowrap',
-  padding: '8px 10px',
-  minWidth: '96px',
+  fontWeight: '600',
+  fontSize: '0.82rem',
+  padding: '11px 14px',
 };
 
 const LUNCH_CELL = {
-  border: `1px solid ${AMBER}`,
-  backgroundColor: '#fefce8',
-  color: '#92400e',
+  ...BASE,
+  whiteSpace: 'nowrap',
+  border: `1px solid #fbbf24`,
+  backgroundColor: '#fbbf24',
+  color: '#000000',
   fontWeight: '800',
-  fontSize: '0.8rem',
-  letterSpacing: '0.1em',
+  fontSize: '0.92rem',
+  letterSpacing: '0.06em',
   textTransform: 'uppercase',
-  padding: '10px 14px',
+  padding: '13px 28px',
   textAlign: 'center',
-  verticalAlign: 'middle',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -85,9 +85,8 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
   if (!timetable) return null;
 
   const { title, days, slots, lunchAfterSlot } = timetable;
-  const colCount = days.length + 1; // time col + day cols
+  const colCount = days.length + 1;
 
-  // Build flat list of <tr> descriptors so we can use rowspan cleanly
   const tableRows = [];
   for (const slot of slots) {
     const rowCount = slot.rows.length;
@@ -107,24 +106,22 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
     <div
       ref={ref}
       className="inline-block"
-      style={{ fontFamily: FONT, backgroundColor: '#ffffff', padding: '28px 32px 36px' }}
+      style={{ fontFamily: FONT, backgroundColor: '#ffffff', padding: '28px 32px 32px' }}
     >
       {/* Title */}
       <p style={{
-        textAlign: 'center', fontWeight: '900', fontSize: '1.1rem',
-        margin: '0 0 18px 0', color: '#000000', letterSpacing: '-0.01em', lineHeight: 1.4,
+        textAlign: 'center', fontWeight: '900', fontSize: '1.3rem',
+        margin: '0 0 20px 0', color: '#000000', letterSpacing: '-0.01em',
       }}>
         {title}
       </p>
 
       {/* Grid */}
-      <div style={{ border: `2.5px solid ${NAVY}`, borderRadius: '2px', overflow: 'hidden' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
-          <colgroup>
-            <col style={{ width: '100px' }} />
-            {days.map((d) => <col key={d} />)}
-          </colgroup>
-
+      <div style={{
+        border: `2.5px solid ${NAVY}`, display: 'inline-block',
+        borderRadius: '2px', overflow: 'hidden',
+      }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
               <th style={HEADER_CELL}>Time</th>
@@ -155,7 +152,7 @@ const TimetableGrid = forwardRef(function TimetableGrid({ timetable }, ref) {
                           color: text ? '#000000' : '#d1d5db',
                         }}
                       >
-                        {text || '—'}
+                        {text || '\u2014'}
                       </td>
                     );
                   })}
