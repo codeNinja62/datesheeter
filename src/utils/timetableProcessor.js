@@ -111,6 +111,17 @@ function parseSheet(sheet, sheetName) {
   const range  = XLSX.utils.decode_range(sheet['!ref']);
   const merges = sheet['!merges'] || [];
 
+  // Build a set of row indices that are hidden in Excel (zero height or hidden flag).
+  // These rows are invisible to the user and should not appear in the output.
+  const hiddenRows = new Set();
+  const rowMeta = sheet['!rows'] || [];
+  for (let r = 0; r < rowMeta.length; r++) {
+    const rm = rowMeta[r];
+    if (rm && (rm.hidden === true || rm.hpx === 0 || rm.hpt === 0)) {
+      hiddenRows.add(r);
+    }
+  }
+
   // ── 1. Build flat 2D grid ──────────────────────────────────────────────────
   const grid = [];
   for (let r = range.s.r; r <= range.e.r; r++) {
@@ -244,6 +255,9 @@ function parseSheet(sheet, sheetName) {
     for (let r = headerRow + 1; r <= blockEnd; r++) {
       const row      = grid[r] || [];
       const timeCell = String(row[timeColIdx] ?? '').trim();
+
+      // Skip hidden rows (zero height or explicitly hidden in Excel)
+      if (hiddenRows.has(r)) continue;
 
       // Skip completely empty rows
       if (row.every((c) => !String(c ?? '').trim())) continue;
