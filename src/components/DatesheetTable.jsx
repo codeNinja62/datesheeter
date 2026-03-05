@@ -1,4 +1,4 @@
-import { Fragment, forwardRef, useRef, useState } from 'react';
+import { Fragment, forwardRef, useEffect, useRef, useState } from 'react';
 
 const BASE_CELL = {
   border: '1px solid #d1d5db',
@@ -52,6 +52,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
   onInsertColumnAfter,
   onRenameColumn,
 }, ref) {
+  const rootRef = useRef(null);
   const dragColumnIdxRef = useRef(-1);
   const dragRowIdxRef = useRef(-1);
   const [columnDropTarget, setColumnDropTarget] = useState(-1);
@@ -61,6 +62,20 @@ const DatesheetTable = forwardRef(function DatesheetTable({
   const [editingColumnId, setEditingColumnId] = useState('');
   const safeColumns = columns || [];
   const safeTheme = theme || FALLBACK_THEME;
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      const rootEl = rootRef.current;
+      if (!rootEl) return;
+      if (rootEl.contains(event.target)) return;
+      setSelectedColumn(-1);
+      setSelectedRow(-1);
+      setEditingColumnId('');
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
 
   const beginColumnDrag = (index) => {
     dragColumnIdxRef.current = index;
@@ -118,7 +133,10 @@ const DatesheetTable = forwardRef(function DatesheetTable({
           {title || 'Datesheet'}
         </p>
 
-        <div style={{ border: `2.5px solid ${safeTheme.border}`, display: 'inline-block', borderRadius: '2px', overflow: 'hidden' }}>
+        <div
+          ref={rootRef}
+          style={{ border: `2.5px solid ${safeTheme.border}`, display: 'inline-block', borderRadius: '2px', overflow: 'hidden' }}
+        >
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <caption className="sr-only">Editable datesheet table with drag and drop row and column ordering.</caption>
             <thead>
@@ -182,7 +200,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                           e.stopPropagation();
                           onInsertColumnAfter(colIndex);
                         }}
-                        className="no-export table-insert-chip absolute -right-3 -bottom-3 h-6 w-6"
+                        className="no-export table-insert-chip absolute right-1.5 bottom-1.5 h-6 w-6 z-20"
                         aria-label={`Add column after ${col.label}`}
                         title="Add column"
                       >
