@@ -264,14 +264,25 @@ function parseSheet(sheet, sheetName) {
 
       if (!TIME_SLOT_RE.test(timeCell)) {
         // Row has no valid time — check if it's a full-width banner.
-        // A banner has all day-column cells set to the same non-empty string
-        // (horizontal merge makes all cells carry the same value).
-        const dayVals = dayColumns
-          .map(({ colIdx }) => String(row[colIdx] ?? '').trim())
-          .filter(Boolean);
-        const unique = [...new Set(dayVals)];
-        if (unique.length === 1 && dayVals.length >= Math.ceil(dayColumns.length * 0.8)) {
-          // All day cells share one value → full-width banner
+        // Conditions:
+        //  1. All day-column cells share one non-empty string.
+        //  2. At least one of those cells is a merge ORIGIN (not a propagated
+        //     non-origin value from a vertical/2D merge above this row).
+        //     Without this guard, a tall merged cell spanning rows below a
+        //     banner would re-trigger false positives on every subsequent row.
+        const dayEntries = dayColumns.map(({ colIdx }) => ({
+          val:      String(row[colIdx] ?? '').trim(),
+          isOrigin: !mergeNonOrigin.has(`${r},${colIdx}`),
+        }));
+        const nonEmpty = dayEntries.filter((e) => e.val);
+        const unique   = [...new Set(nonEmpty.map((e) => e.val))];
+        const hasOriginCell = nonEmpty.some((e) => e.isOrigin);
+        if (
+          unique.length === 1 &&
+          nonEmpty.length >= Math.ceil(dayColumns.length * 0.8) &&
+          hasOriginCell
+        ) {
+          // Genuine full-width banner from this row
           if (slots.length > 0) slots.push({ type: 'banner', text: unique[0] });
         }
         // Either way, this row is not a data row — skip slot processing
