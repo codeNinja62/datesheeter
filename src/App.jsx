@@ -112,6 +112,7 @@ export default function App() {
   const [editableRows, setEditableRows]     = useState([]);
   const [tableTheme, setTableTheme]         = useState(DEFAULT_THEME);
   const [tableStatus, setTableStatus]       = useState('');
+  const [activePresetId, setActivePresetId] = useState('classic');
   const confirmTimerRef = useRef(null);
   const customColCountRef = useRef(1);
   useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
@@ -145,6 +146,7 @@ export default function App() {
     setTableTheme(DEFAULT_THEME);
     setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
     setTableStatus('');
+    setActivePresetId('classic');
     customColCountRef.current = 1;
   }, [displayRows]);
 
@@ -189,6 +191,7 @@ export default function App() {
     setEditableRows([]);
     setTableTheme(DEFAULT_THEME);
     setTableStatus('');
+    setActivePresetId('classic');
     customColCountRef.current = 1;
   }, []);
 
@@ -262,11 +265,13 @@ export default function App() {
 
   const handleThemeChange = useCallback((key, value) => {
     setTableTheme((prev) => ({ ...prev, [key]: value }));
+    setActivePresetId('custom');
     setTableStatus('Theme updated.');
   }, []);
 
   const handlePresetTheme = useCallback((preset) => {
     setTableTheme(preset.theme);
+    setActivePresetId(preset.id);
     setTableStatus(`${preset.label} palette applied.`);
   }, []);
 
@@ -274,6 +279,7 @@ export default function App() {
     setTableColumns(DEFAULT_COLUMNS);
     setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
     setTableTheme(DEFAULT_THEME);
+    setActivePresetId('classic');
     customColCountRef.current = 1;
     setTableStatus('Table customization reset to default.');
   }, [displayRows]);
@@ -425,41 +431,46 @@ export default function App() {
                       >
                         add row
                       </button>
-                      <button
-                        onClick={handleResetCustomization}
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-widest bg-rose-500/15 text-rose-200 hover:bg-rose-500/20 transition-colors"
-                      >
-                        reset custom
-                      </button>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-mono text-white/40 tracking-[0.18em] uppercase">
-                      quick palettes
-                    </p>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-[10px] font-mono text-white/45 tracking-[0.18em] uppercase">
+                      palette
+                    </label>
+                    <select
+                      value={activePresetId}
+                      onChange={(e) => {
+                        const preset = THEME_PRESETS.find((p) => p.id === e.target.value);
+                        if (preset) handlePresetTheme(preset);
+                      }}
+                      className="glass-focus bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white/80"
+                    >
                       {THEME_PRESETS.map((preset) => (
-                        <button
-                          key={preset.id}
-                          onClick={() => handlePresetTheme(preset)}
-                          className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
-                        >
-                          {preset.label}
-                        </button>
+                        <option key={preset.id} value={preset.id}>{preset.label}</option>
                       ))}
-                    </div>
+                      <option value="custom">Custom</option>
+                    </select>
+                    <button
+                      onClick={handleResetCustomization}
+                      className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
+                    >
+                      reset
+                    </button>
                   </div>
                   <p className="text-[10px] font-mono text-white/35 tracking-wide uppercase">
                     drag handles in headers and row actions to reorder columns and rows
                   </p>
                   <p className="text-[10px] font-mono text-amber-300/75 tracking-wide" aria-live="polite">
-                    {tableStatus || 'Tip: drag to reorder, or use left/right and up/down for keyboard and touch.'}
+                    {tableStatus || 'Tip: drag grip handles to reorder rows and columns.'}
                   </p>
 
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-mono text-white/40 tracking-[0.18em] uppercase">
-                      color system
-                    </p>
+                  <details className="group">
+                    <summary className="cursor-pointer list-none text-[10px] font-mono text-white/45 tracking-[0.18em] uppercase flex items-center justify-between">
+                      appearance controls
+                      <span className="text-white/30 group-open:hidden">show</span>
+                      <span className="text-white/30 hidden group-open:inline">hide</span>
+                    </summary>
+                    <div className="pt-3">
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                     {[
                       ['headerBg', 'Header BG'],
@@ -483,7 +494,8 @@ export default function App() {
                       </label>
                     ))}
                     </div>
-                  </div>
+                    </div>
+                  </details>
                 </div>
                 <DatesheetTable
                   rows={editableRows}

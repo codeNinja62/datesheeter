@@ -29,7 +29,7 @@ const HEAD_CELL = {
   padding: '13px 28px',
 };
 
-const BUTTON_CLASS = 'no-export px-2.5 py-1.5 text-[10px] font-mono font-bold rounded border border-black/20 hover:bg-black/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
+const BUTTON_CLASS = 'no-export text-[10px] font-mono font-bold rounded border border-black/20 hover:bg-black/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
 const FALLBACK_THEME = {
   headerBg: '#0f172a',
   headerText: '#ffffff',
@@ -132,7 +132,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                     }}
                     onDragLeave={() => setColumnDropTarget(-1)}
                     onDrop={() => dropColumn(colIndex)}
-                    className={columnDropTarget === colIndex ? 'table-drop-target-col' : ''}
+                    className={`relative group ${columnDropTarget === colIndex ? 'table-drop-target-col' : ''}`}
                     style={{
                       ...HEAD_CELL,
                       backgroundColor: safeTheme.headerBg,
@@ -147,9 +147,9 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                         className="no-export w-full bg-white/95 text-slate-900 rounded px-2 py-1 text-[11px] font-mono font-bold"
                         aria-label={`Rename ${col.label} column`}
                       />
-                      <div className="no-export flex items-center justify-center gap-1.5">
+                      <div className="no-export flex items-center justify-center">
                         <button
-                          className={`${BUTTON_CLASS} drag-handle`}
+                          className={`${BUTTON_CLASS} drag-handle px-2.5 py-1 text-slate-700 bg-white/90`}
                           draggable
                           onDragStart={() => beginColumnDrag(colIndex)}
                           onDragEnd={() => {
@@ -159,32 +159,18 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                           aria-label={`Drag ${col.label} column to reorder`}
                           title="Drag to reorder column"
                         >
-                          drag
-                        </button>
-                        <button
-                          className={BUTTON_CLASS}
-                          onClick={() => onReorderColumn(colIndex, colIndex - 1)}
-                          disabled={colIndex === 0}
-                          aria-label={`Move ${col.label} column left`}
-                        >
-                          left
-                        </button>
-                        <button
-                          className={BUTTON_CLASS}
-                          onClick={() => onReorderColumn(colIndex, colIndex + 1)}
-                          disabled={colIndex === safeColumns.length - 1}
-                          aria-label={`Move ${col.label} column right`}
-                        >
-                          right
-                        </button>
-                        <button
-                          className={BUTTON_CLASS}
-                          onClick={() => onRemoveColumn(col.id)}
-                          disabled={safeColumns.length <= 1}
-                        >
-                          remove
+                          grip
                         </button>
                       </div>
+                        <button
+                          className={`${BUTTON_CLASS} absolute right-1.5 top-1.5 h-6 w-6 opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 bg-white/95 text-slate-800`}
+                          onClick={() => onRemoveColumn(col.id)}
+                          disabled={safeColumns.length <= 1}
+                          aria-label={`Remove ${col.label} column`}
+                          title="Remove column"
+                        >
+                          x
+                        </button>
                     </div>
                   </th>
                 ))}
@@ -195,7 +181,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                     backgroundColor: safeTheme.headerBg,
                     color: safeTheme.headerText,
                     border: `1px solid ${safeTheme.border}`,
-                    minWidth: '160px',
+                    minWidth: '110px',
                   }}
                 >
                   row actions
@@ -241,7 +227,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                   <td className="no-export" style={{ ...BASE_CELL, border: `1px solid ${safeTheme.border}` }}>
                     <div className="flex items-center justify-center gap-1.5">
                       <button
-                        className={`${BUTTON_CLASS} drag-handle`}
+                        className={`${BUTTON_CLASS} drag-handle px-2.5 py-1 text-slate-700 bg-white/90`}
                         draggable
                         onDragStart={() => beginRowDrag(i)}
                         onDragEnd={() => {
@@ -251,29 +237,15 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                         aria-label={`Drag row ${i + 1} to reorder`}
                         title="Drag to reorder row"
                       >
-                        drag
+                        grip
                       </button>
                       <button
-                        className={BUTTON_CLASS}
-                        onClick={() => onReorderRow(i, i - 1)}
-                        disabled={i === 0}
-                        aria-label={`Move row ${i + 1} up`}
-                      >
-                        up
-                      </button>
-                      <button
-                        className={BUTTON_CLASS}
-                        onClick={() => onReorderRow(i, i + 1)}
-                        disabled={i === rows.length - 1}
-                        aria-label={`Move row ${i + 1} down`}
-                      >
-                        down
-                      </button>
-                      <button
-                        className={BUTTON_CLASS}
+                        className={`${BUTTON_CLASS} h-6 w-6 bg-white/95 text-slate-800`}
                         onClick={() => onRemoveRow(i)}
+                        aria-label={`Remove row ${i + 1}`}
+                        title="Remove row"
                       >
-                        remove
+                        x
                       </button>
                     </div>
                   </td>
