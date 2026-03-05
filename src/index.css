@@ -95,6 +95,22 @@ body {
   appearance: none !important;
 }
 
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.table-drop-target-col {
+  box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.75);
+}
+
+.table-drop-target-row td {
+  box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.45);
+}
+
 /* Cursor-tracking spotlight */
 .cursor-spotlight {
   background: radial-gradient(

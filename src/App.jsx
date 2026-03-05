@@ -61,6 +61,7 @@ export default function App() {
   const [tableColumns, setTableColumns]     = useState(DEFAULT_COLUMNS);
   const [editableRows, setEditableRows]     = useState([]);
   const [tableTheme, setTableTheme]         = useState(DEFAULT_THEME);
+  const [tableStatus, setTableStatus]       = useState('');
   const confirmTimerRef = useRef(null);
   const customColCountRef = useRef(1);
   useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
@@ -93,6 +94,7 @@ export default function App() {
     setTableColumns(DEFAULT_COLUMNS);
     setTableTheme(DEFAULT_THEME);
     setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
+    setTableStatus('');
     customColCountRef.current = 1;
   }, [displayRows]);
 
@@ -136,6 +138,7 @@ export default function App() {
     setTableColumns(DEFAULT_COLUMNS);
     setEditableRows([]);
     setTableTheme(DEFAULT_THEME);
+    setTableStatus('');
     customColCountRef.current = 1;
   }, []);
 
@@ -157,10 +160,12 @@ export default function App() {
 
   const handleRowReorder = useCallback((fromIndex, toIndex) => {
     setEditableRows((prev) => moveItem(prev, fromIndex, toIndex));
+    setTableStatus(`Row ${fromIndex + 1} moved to position ${toIndex + 1}.`);
   }, []);
 
   const handleRowRemove = useCallback((rowIndex) => {
     setEditableRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
+    setTableStatus(`Row ${rowIndex + 1} removed.`);
   }, []);
 
   const handleRowAdd = useCallback(() => {
@@ -169,6 +174,7 @@ export default function App() {
       for (const col of tableColumns) next[col.id] = '';
       return [...prev, next];
     });
+    setTableStatus('New row added.');
   }, [tableColumns]);
 
   const handleColumnRename = useCallback((columnId, label) => {
@@ -179,6 +185,7 @@ export default function App() {
 
   const handleColumnReorder = useCallback((fromIndex, toIndex) => {
     setTableColumns((prev) => moveItem(prev, fromIndex, toIndex));
+    setTableStatus(`Column ${fromIndex + 1} moved to position ${toIndex + 1}.`);
   }, []);
 
   const handleColumnRemove = useCallback((columnId) => {
@@ -191,6 +198,7 @@ export default function App() {
       delete next[columnId];
       return next;
     }));
+    setTableStatus('Column removed.');
   }, []);
 
   const handleColumnAdd = useCallback(() => {
@@ -199,6 +207,7 @@ export default function App() {
     customColCountRef.current += 1;
     setTableColumns((prev) => [...prev, { id: newId, label: newLabel }]);
     setEditableRows((prev) => prev.map((row) => ({ ...row, [newId]: '' })));
+    setTableStatus(`${newLabel} column added.`);
   }, []);
 
   const handleThemeChange = useCallback((key, value) => {
@@ -356,6 +365,9 @@ export default function App() {
                   </div>
                   <p className="text-[10px] font-mono text-white/35 tracking-wide uppercase">
                     drag handles in headers and row actions to reorder columns and rows
+                  </p>
+                  <p className="text-[10px] font-mono text-amber-300/75 tracking-wide" aria-live="polite">
+                    {tableStatus || 'Tip: drag to reorder, or use left/right and up/down for keyboard and touch.'}
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">

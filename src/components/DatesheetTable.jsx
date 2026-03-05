@@ -1,4 +1,4 @@
-import { forwardRef, useRef } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 
 const BASE_CELL = {
   border: '1px solid #d1d5db',
@@ -55,6 +55,8 @@ const DatesheetTable = forwardRef(function DatesheetTable({
 }, ref) {
   const dragColumnIdxRef = useRef(-1);
   const dragRowIdxRef = useRef(-1);
+  const [columnDropTarget, setColumnDropTarget] = useState(-1);
+  const [rowDropTarget, setRowDropTarget] = useState(-1);
   const safeColumns = columns || [];
   const safeTheme = theme || FALLBACK_THEME;
 
@@ -65,6 +67,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
   const dropColumn = (toIndex) => {
     const fromIndex = dragColumnIdxRef.current;
     dragColumnIdxRef.current = -1;
+    setColumnDropTarget(-1);
     if (fromIndex < 0 || fromIndex === toIndex) return;
     onReorderColumn(fromIndex, toIndex);
   };
@@ -76,6 +79,7 @@ const DatesheetTable = forwardRef(function DatesheetTable({
   const dropRow = (toIndex) => {
     const fromIndex = dragRowIdxRef.current;
     dragRowIdxRef.current = -1;
+    setRowDropTarget(-1);
     if (fromIndex < 0 || fromIndex === toIndex) return;
     onReorderRow(fromIndex, toIndex);
   };
@@ -121,8 +125,13 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                 {safeColumns.map((col, colIndex) => (
                   <th
                     key={col.id}
-                    onDragOver={(e) => e.preventDefault()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setColumnDropTarget(colIndex);
+                    }}
+                    onDragLeave={() => setColumnDropTarget(-1)}
                     onDrop={() => dropColumn(colIndex)}
+                    className={columnDropTarget === colIndex ? 'table-drop-target-col' : ''}
                     style={{
                       ...HEAD_CELL,
                       backgroundColor: safeTheme.headerBg,
@@ -139,14 +148,33 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                       />
                       <div className="no-export flex items-center justify-center gap-1.5">
                         <button
-                          className={BUTTON_CLASS}
+                          className={`${BUTTON_CLASS} drag-handle`}
                           draggable
                           onDragStart={() => beginColumnDrag(colIndex)}
                           onDragEnd={() => {
                             dragColumnIdxRef.current = -1;
+                            setColumnDropTarget(-1);
                           }}
+                          aria-label={`Drag ${col.label} column to reorder`}
+                          title="Drag to reorder column"
                         >
                           drag
+                        </button>
+                        <button
+                          className={BUTTON_CLASS}
+                          onClick={() => onReorderColumn(colIndex, colIndex - 1)}
+                          disabled={colIndex === 0}
+                          aria-label={`Move ${col.label} column left`}
+                        >
+                          left
+                        </button>
+                        <button
+                          className={BUTTON_CLASS}
+                          onClick={() => onReorderColumn(colIndex, colIndex + 1)}
+                          disabled={colIndex === safeColumns.length - 1}
+                          aria-label={`Move ${col.label} column right`}
+                        >
+                          right
                         </button>
                         <button
                           className={BUTTON_CLASS}
@@ -177,8 +205,13 @@ const DatesheetTable = forwardRef(function DatesheetTable({
               {rows.map((r, i) => (
                 <tr
                   key={i}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setRowDropTarget(i);
+                  }}
+                  onDragLeave={() => setRowDropTarget(-1)}
                   onDrop={() => dropRow(i)}
+                  className={rowDropTarget === i ? 'table-drop-target-row' : ''}
                   style={{ backgroundColor: i % 2 === 0 ? safeTheme.rowOdd : safeTheme.rowEven }}
                 >
                   {safeColumns.map((col) => {
@@ -207,14 +240,33 @@ const DatesheetTable = forwardRef(function DatesheetTable({
                   <td className="no-export" style={{ ...BASE_CELL, border: `1px solid ${safeTheme.border}` }}>
                     <div className="flex items-center justify-center gap-1.5">
                       <button
-                        className={BUTTON_CLASS}
+                        className={`${BUTTON_CLASS} drag-handle`}
                         draggable
                         onDragStart={() => beginRowDrag(i)}
                         onDragEnd={() => {
                           dragRowIdxRef.current = -1;
+                          setRowDropTarget(-1);
                         }}
+                        aria-label={`Drag row ${i + 1} to reorder`}
+                        title="Drag to reorder row"
                       >
                         drag
+                      </button>
+                      <button
+                        className={BUTTON_CLASS}
+                        onClick={() => onReorderRow(i, i - 1)}
+                        disabled={i === 0}
+                        aria-label={`Move row ${i + 1} up`}
+                      >
+                        up
+                      </button>
+                      <button
+                        className={BUTTON_CLASS}
+                        onClick={() => onReorderRow(i, i + 1)}
+                        disabled={i === rows.length - 1}
+                        aria-label={`Move row ${i + 1} down`}
+                      >
+                        down
                       </button>
                       <button
                         className={BUTTON_CLASS}
