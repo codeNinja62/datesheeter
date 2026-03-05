@@ -83,6 +83,18 @@ body {
   min-width: unset !important;
 }
 
+[data-exporting] .no-export {
+  display: none !important;
+}
+
+[data-exporting] .editable-cell-input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+  appearance: none !important;
+}
+
 /* Cursor-tracking spotlight */
 .cursor-spotlight {
   background: radial-gradient(

@@ -8,6 +8,43 @@ import DatesheetTable from './components/DatesheetTable';
 import { parseFile, filterByBatch, filterByCourses, sortRows } from './utils/dataProcessor';
 import { exportToImage } from './utils/exporter';
 
+const DEFAULT_COLUMNS = [
+  { id: 'slot', label: 'Time' },
+  { id: 'date', label: 'Date' },
+  { id: 'day', label: 'Day' },
+  { id: 'courseName', label: 'Subject' },
+];
+
+const DEFAULT_THEME = {
+  headerBg: '#0f172a',
+  headerText: '#ffffff',
+  bodyText: '#000000',
+  rowOdd: '#ffffff',
+  rowEven: '#f8fafc',
+  accentBg: '#fbbf24',
+  accentText: '#000000',
+  border: '#0f172a',
+};
+
+function createEditableRows(sourceRows, columns) {
+  const columnIds = columns.map((c) => c.id);
+  return sourceRows.map((row) => {
+    const next = {};
+    for (const id of columnIds) {
+      next[id] = row?.[id] ?? '';
+    }
+    return next;
+  });
+}
+
+function moveItem(items, from, to) {
+  if (from < 0 || to < 0 || from >= items.length || to >= items.length) return items;
+  const clone = [...items];
+  const [picked] = clone.splice(from, 1);
+  clone.splice(to, 0, picked);
+  return clone;
+}
+
 export default function App() {
   // ── State ───────────────────────────────────────────────────────────────────
   const [allRows, setAllRows]       = useState([]);
@@ -21,7 +58,11 @@ export default function App() {
   const [fileUploaded, setFileUploaded]     = useState(false);
   const [exporting, setExporting]           = useState(false);
   const [confirmReset, setConfirmReset]     = useState(false);
+  const [tableColumns, setTableColumns]     = useState(DEFAULT_COLUMNS);
+  const [editableRows, setEditableRows]     = useState([]);
+  const [tableTheme, setTableTheme]         = useState(DEFAULT_THEME);
   const confirmTimerRef = useRef(null);
+  const customColCountRef = useRef(1);
   useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
@@ -47,6 +88,13 @@ export default function App() {
       return sortRows(filterByCourses(allRows, selectedNames));
     return [];
   }, [allRows, mode, selectedBatch, selectedNames]);
+
+  useEffect(() => {
+    setTableColumns(DEFAULT_COLUMNS);
+    setTableTheme(DEFAULT_THEME);
+    setEditableRows(createEditableRows(displayRows, DEFAULT_COLUMNS));
+    customColCountRef.current = 1;
+  }, [displayRows]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +133,10 @@ export default function App() {
     setAllRows([]); setBatches([]); setCourses([]);
     setSelectedBatch(''); setSelectedNames([]);
     setFileUploaded(false); setError(''); setConfirmReset(false);
+    setTableColumns(DEFAULT_COLUMNS);
+    setEditableRows([]);
+    setTableTheme(DEFAULT_THEME);
+    customColCountRef.current = 1;
   }, []);
 
   const handleResetClick = useCallback(() => {
@@ -96,6 +148,64 @@ export default function App() {
       handleReset();
     }
   }, [confirmReset, handleReset]);
+
+  const handleCellChange = useCallback((rowIndex, columnId, value) => {
+    setEditableRows((prev) => prev.map((row, idx) => (
+      idx === rowIndex ? { ...row, [columnId]: value } : row
+    )));
+  }, []);
+
+  const handleRowMove = useCallback((rowIndex, direction) => {
+    const nextIndex = direction === 'up' ? rowIndex - 1 : rowIndex + 1;
+    setEditableRows((prev) => moveItem(prev, rowIndex, nextIndex));
+  }, []);
+
+  const handleRowRemove = useCallback((rowIndex) => {
+    setEditableRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
+  }, []);
+
+  const handleRowAdd = useCallback(() => {
+    setEditableRows((prev) => {
+      const next = {};
+      for (const col of tableColumns) next[col.id] = '';
+      return [...prev, next];
+    });
+  }, [tableColumns]);
+
+  const handleColumnRename = useCallback((columnId, label) => {
+    setTableColumns((prev) => prev.map((col) => (
+      col.id === columnId ? { ...col, label } : col
+    )));
+  }, []);
+
+  const handleColumnMove = useCallback((columnIndex, direction) => {
+    const nextIndex = direction === 'left' ? columnIndex - 1 : columnIndex + 1;
+    setTableColumns((prev) => moveItem(prev, columnIndex, nextIndex));
+  }, []);
+
+  const handleColumnRemove = useCallback((columnId) => {
+    setTableColumns((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((col) => col.id !== columnId);
+    });
+    setEditableRows((prev) => prev.map((row) => {
+      const next = { ...row };
+      delete next[columnId];
+      return next;
+    }));
+  }, []);
+
+  const handleColumnAdd = useCallback(() => {
+    const newId = `custom_${customColCountRef.current}`;
+    const newLabel = `Custom ${customColCountRef.current}`;
+    customColCountRef.current += 1;
+    setTableColumns((prev) => [...prev, { id: newId, label: newLabel }]);
+    setEditableRows((prev) => prev.map((row) => ({ ...row, [newId]: '' })));
+  }, []);
+
+  const handleThemeChange = useCallback((key, value) => {
+    setTableTheme((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -226,9 +336,62 @@ export default function App() {
                     )}
                   </button>
                 </div>
+                <div className="glass rounded-xl p-4 sm:p-5 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[11px] font-mono text-white/45 tracking-widest uppercase">
+                      table editor
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleColumnAdd}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
+                      >
+                        add column
+                      </button>
+                      <button
+                        onClick={handleRowAdd}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-widest bg-white/10 text-white/70 hover:bg-white/15 transition-colors"
+                      >
+                        add row
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                    {[
+                      ['headerBg', 'Header BG'],
+                      ['headerText', 'Header Text'],
+                      ['bodyText', 'Body Text'],
+                      ['rowOdd', 'Row 1'],
+                      ['rowEven', 'Row 2'],
+                      ['accentBg', 'Accent BG'],
+                      ['accentText', 'Accent Text'],
+                      ['border', 'Border'],
+                    ].map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 text-[10px] font-mono text-white/55 tracking-wide uppercase">
+                        <input
+                          type="color"
+                          value={tableTheme[key]}
+                          onChange={(e) => handleThemeChange(key, e.target.value)}
+                          className="h-8 w-8 rounded border border-white/20 bg-transparent p-0 cursor-pointer"
+                          aria-label={label}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
                 <DatesheetTable
-                  rows={displayRows}
+                  rows={editableRows}
+                  columns={tableColumns}
                   ref={tableRef}
+                  theme={tableTheme}
+                  onCellChange={handleCellChange}
+                  onMoveRow={handleRowMove}
+                  onRemoveRow={handleRowRemove}
+                  onMoveColumn={handleColumnMove}
+                  onRemoveColumn={handleColumnRemove}
+                  onRenameColumn={handleColumnRename}
                   title={
                     mode === 'batch' && selectedBatch
                       ? `Datesheet — ${selectedBatch}`
